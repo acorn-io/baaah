@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/ibuildthecloud/baaah/pkg/backend"
@@ -58,6 +59,10 @@ func (a *reader) addCall(obj runtime.Object, ns, name string, selector labels.Se
 	gvk, err := a.reader.GVKForObject(obj, a.scheme)
 	if err != nil {
 		return err
+	}
+
+	if _, ok := obj.(meta.ObjectList); ok {
+		gvk.Kind = strings.TrimSuffix(gvk.Kind, "List")
 	}
 
 	a.historyLock.Lock()

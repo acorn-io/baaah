@@ -21,7 +21,7 @@ type GetOptions struct {
 }
 
 func (g *GetOptions) GetNamespace(defaultValue string) string {
-	if g == nil || g.Namespace != "" {
+	if g == nil || g.Namespace == "" {
 		return defaultValue
 	}
 	return g.Namespace
