@@ -148,8 +148,30 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 		return err
 	}
 
+	expectedKeys := map[ObjectKey]bool{}
+	for k := range expected {
+		expectedKeys[k] = true
+	}
+	collectedKeys := map[ObjectKey]bool{}
+	for k := range collected {
+		collectedKeys[k] = true
+	}
+
+	for key := range collectedKeys {
+		if !expectedKeys[key] {
+			t.Fatalf("Unexpected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
+		}
+	}
+
+	for key := range expectedKeys {
+		if !collectedKeys[key] {
+			t.Fatalf("Missing expected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
+		}
+		assert.Equal(t, expected[key], collected[key], "object %s/%s (%v) does not match", key.Namespace, key.Name, key.GVK)
+	}
+
 	assert.Equal(t, b.ExpectedDelay, resp.Delay)
-	assert.Equal(t, expected, collected)
+	//assert.Equal(t, expected, collected)
 	return nil
 }
 
