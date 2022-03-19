@@ -91,14 +91,16 @@ func FromDir(scheme *runtime.Scheme, path string) (*Harness, meta.Object, error)
 }
 
 func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler router.HandlerFunc) {
-	harness, input, err := FromDir(scheme, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = harness.Invoke(t, input, handler)
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Run(path, func(t *testing.T) {
+		harness, input, err := FromDir(scheme, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = harness.Invoke(t, input, handler)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
 }
 
 func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler) error {

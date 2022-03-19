@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ibuildthecloud/baaah/pkg/meta"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 type Router struct {
@@ -26,10 +27,16 @@ type RouteBuilder struct {
 	objType       meta.Object
 	name          string
 	namespace     string
+	sel           map[string]string
 }
 
 func (r RouteBuilder) Namespace(namespace string) RouteBuilder {
-	r.namespace = r.namespace
+	r.namespace = namespace
+	return r
+}
+
+func (r RouteBuilder) Selector(sel map[string]string) RouteBuilder {
+	r.sel = sel
 	return r
 }
 
@@ -48,6 +55,10 @@ func (r RouteBuilder) Type(objType meta.Object) RouteBuilder {
 	return r
 }
 
+func (r RouteBuilder) HandlerFunc(h HandlerFunc) {
+	r.Handler(h)
+}
+
 func (r RouteBuilder) Handler(h Handler) {
 	result := h
 	if !r.includeRemove {
@@ -60,6 +71,12 @@ func (r RouteBuilder) Handler(h Handler) {
 			Next:      result,
 			Name:      r.name,
 			Namespace: r.namespace,
+		}
+	}
+	if len(r.sel) > 0 {
+		result = SelectorFilter{
+			Next:     result,
+			Selector: labels.SelectorFromSet(r.sel),
 		}
 	}
 	r.router.handlers.AddHandler(r.objType, result)
@@ -102,4 +119,16 @@ func (n NameNamespaceFilter) Handle(req Request, resp Response) error {
 		return nil
 	}
 	return n.Next.Handle(req, resp)
+}
+
+type SelectorFilter struct {
+	Next     Handler
+	Selector labels.Selector
+}
+
+func (s SelectorFilter) Handle(req Request, resp Response) error {
+	if req.Object == nil || !s.Selector.Matches(labels.Set(req.Object.GetLabels())) {
+		return nil
+	}
+	return s.Next.Handle(req, resp)
 }
