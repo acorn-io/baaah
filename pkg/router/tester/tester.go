@@ -96,17 +96,21 @@ func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler rout
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = harness.Invoke(t, input, handler)
+		_, err = harness.Invoke(t, input, handler)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 }
 
-func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler) error {
+func (b *Harness) InvokeFunc(t *testing.T, input meta.Object, handler router.HandlerFunc) (*Response, error) {
+	return b.Invoke(t, input, handler)
+}
+
+func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler) (*Response, error) {
 	gvk, err := apiutil.GVKForObject(input, b.Scheme)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx := context.Background()
@@ -118,13 +122,16 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 	}
 
 	var (
-		resp Response
-		req  = router.Request{
-			Client: &Client{
-				DefaultNamespace: input.GetNamespace(),
-				Objects:          b.Existing,
-				Scheme:           b.Scheme,
-			},
+		client = &Client{
+			DefaultNamespace: input.GetNamespace(),
+			Objects:          b.Existing,
+			Scheme:           b.Scheme,
+		}
+		resp = Response{
+			Client: client,
+		}
+		req = router.Request{
+			Client:      client,
 			Object:      input,
 			Ctx:         ctx,
 			GVK:         gvk,
@@ -137,17 +144,23 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 
 	err = handler.Handle(req, &resp)
 	if err != nil {
-		return err
+		return &resp, err
 	}
 
 	expected, err := toObjectMap(b.Scheme, b.ExpectedOutput)
 	if err != nil {
-		return err
+		return &resp, err
 	}
 
 	collected, err := toObjectMap(b.Scheme, resp.Collected)
 	if err != nil {
-		return err
+		return &resp, err
+	}
+
+	assert.Equal(t, b.ExpectedDelay, resp.Delay)
+
+	if len(b.ExpectedOutput) == 0 {
+		return &resp, nil
 	}
 
 	expectedKeys := map[ObjectKey]bool{}
@@ -172,9 +185,7 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 		assert.Equal(t, expected[key], collected[key], "object %s/%s (%v) does not match", key.Namespace, key.Name, key.GVK)
 	}
 
-	assert.Equal(t, b.ExpectedDelay, resp.Delay)
-	//assert.Equal(t, expected, collected)
-	return nil
+	return &resp, nil
 }
 
 func toObjectMap(scheme *runtime.Scheme, objs []meta.Object) (map[ObjectKey]meta.Object, error) {
