@@ -27,7 +27,7 @@ func Create(ctx context.Context, scheme *runtime.Scheme, gvs ...schema.GroupVers
 					GVK:          gvk,
 					SchemaObject: obj,
 					Status:       true,
-				})
+				}.WithColumnsFromStruct(obj))
 			}
 		}
 	}
