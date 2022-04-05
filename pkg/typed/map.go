@@ -8,6 +8,13 @@ type ordered interface {
 	string | ~int | float64 | float32
 }
 
+func Keys[K comparable, T any](data map[K]T) (result []K) {
+	for k := range data {
+		result = append(result, k)
+	}
+	return
+}
+
 func SortedKeys[K ordered, T any](data map[K]T) (result []K) {
 	for k := range data {
 		result = append(result, k)

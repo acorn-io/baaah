@@ -182,7 +182,12 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 		if !collectedKeys[key] {
 			t.Fatalf("Missing expected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
 		}
-		assert.Equal(t, expected[key], collected[key], "object %s/%s (%v) does not match", key.Namespace, key.Name, key.GVK)
+		if !assert.ObjectsAreEqual(expected[key], collected[key]) {
+			left, _ := yaml.Export(expected[key])
+			right, _ := yaml.Export(collected[key])
+
+			assert.Equal(t, string(left), string(right), "object %s/%s (%v) does not match", key.Namespace, key.Name, key.GVK)
+		}
 	}
 
 	return &resp, nil

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ibuildthecloud/baaah/pkg/backend"
 	"github.com/ibuildthecloud/baaah/pkg/meta"
+	"github.com/ibuildthecloud/baaah/pkg/router"
 	"github.com/rancher/lasso/pkg/controller"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -50,7 +51,7 @@ func (b *Backend) Trigger(gvk schema.GroupVersionKind, key string) error {
 	if err != nil {
 		return err
 	}
-	controller.EnqueueKey(key)
+	controller.EnqueueKey(router.TriggerPrefix + key)
 	return nil
 }
 

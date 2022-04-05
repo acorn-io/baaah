@@ -2,8 +2,6 @@ package router
 
 import (
 	"context"
-	"strings"
-	"sync"
 
 	"github.com/ibuildthecloud/baaah/pkg/backend"
 	"github.com/ibuildthecloud/baaah/pkg/meta"
@@ -12,11 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-type callHistory struct {
-	gvk       schema.GroupVersionKind
-	namespace string
-	name      string
-	selector  labels.Selector
+type TriggerRegistry interface {
+	Watch(obj runtime.Object, namespace, name string, selector labels.Selector) error
+	WatchingGVKs() []schema.GroupVersionKind
 }
 
 type client struct {
@@ -25,23 +21,36 @@ type client struct {
 }
 
 type writer struct {
-	ctx    context.Context
-	writer backend.Writer
+	ctx      context.Context
+	writer   backend.Writer
+	registry TriggerRegistry
 }
 
 func (w *writer) Delete(obj meta.Object) error {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
 	return w.writer.Delete(w.ctx, obj)
 }
 
 func (w *writer) Update(obj meta.Object) error {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
 	return w.writer.Update(w.ctx, obj)
 }
 
 func (w *writer) UpdateStatus(obj meta.Object) error {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
 	return w.writer.UpdateStatus(w.ctx, obj)
 }
 
 func (w *writer) Create(obj meta.Object) error {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
 	return w.writer.Create(w.ctx, obj)
 }
 
@@ -51,30 +60,7 @@ type reader struct {
 	scheme           *runtime.Scheme
 	reader           backend.Reader
 	defaultNamespace string
-	callHistory      []callHistory
-	historyLock      sync.Mutex
-}
-
-func (a *reader) addCall(obj runtime.Object, ns, name string, selector labels.Selector) error {
-	gvk, err := a.reader.GVKForObject(obj, a.scheme)
-	if err != nil {
-		return err
-	}
-
-	if _, ok := obj.(meta.ObjectList); ok {
-		gvk.Kind = strings.TrimSuffix(gvk.Kind, "List")
-	}
-
-	a.historyLock.Lock()
-	defer a.historyLock.Unlock()
-
-	a.callHistory = append(a.callHistory, callHistory{
-		gvk:       gvk,
-		namespace: ns,
-		name:      name,
-		selector:  selector,
-	})
-	return nil
+	registry         TriggerRegistry
 }
 
 func (a *reader) Get(obj meta.Object, name string, opts *meta.GetOptions) error {
@@ -90,7 +76,10 @@ func (a *reader) Get(obj meta.Object, name string, opts *meta.GetOptions) error 
 		return err
 	}
 
-	return a.addCall(obj, ns, name, nil)
+	if err := a.registry.Watch(obj, ns, name, nil); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *reader) List(obj meta.ObjectList, opts *meta.ListOptions) error {
@@ -114,5 +103,8 @@ func (a *reader) List(obj meta.ObjectList, opts *meta.ListOptions) error {
 		return err
 	}
 
-	return a.addCall(obj, ns, "", sel)
+	if err := a.registry.Watch(obj, ns, "", sel); err != nil {
+		return err
+	}
+	return nil
 }

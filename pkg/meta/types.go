@@ -40,7 +40,7 @@ func (l *ListOptions) GetSelector() labels.Selector {
 }
 
 func (l *ListOptions) GetNamespace(defaultValue string) string {
-	if l == nil || l.Namespace != "" {
+	if l == nil || l.Namespace == "" {
 		return defaultValue
 	}
 	return l.Namespace
