@@ -15,6 +15,8 @@ type Handler interface {
 	Handle(req Request, resp Response) error
 }
 
+type Middleware func(h Handler) Handler
+
 type HandlerFunc func(req Request, resp Response) error
 
 func (h HandlerFunc) Handle(req Request, resp Response) error {

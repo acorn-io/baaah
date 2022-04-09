@@ -227,7 +227,7 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	}
 
 	if handles {
-		newObj, err := m.save.save(unmodifiedObject, req, resp, resp.WatchingGVKs())
+		newObj, err := m.save.save(unmodifiedObject, req, resp, typed.Keys(m.watching))
 		if err != nil {
 			return nil, err
 		}

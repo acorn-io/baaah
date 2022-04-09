@@ -34,23 +34,17 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 		WithOwner(unmodified).
 		WithGVK(watchingGVKS...)
 
-	newObj := req.Object
-	modified := false
 	objs := make([]runtime.Object, 0, len(resp.objects))
 	for _, obj := range resp.objects {
-		if isObjectForRequest(req, obj) {
-			newObj = obj
-			modified = true
-		} else {
-			objs = append(objs, obj)
-		}
+		objs = append(objs, obj)
 	}
 
 	if err := apply.ApplyObjects(objs...); err != nil {
 		return nil, err
 	}
 
-	if modified && statusChanged(unmodified, newObj) {
+	newObj := req.Object
+	if newObj != nil && statusChanged(unmodified, newObj) {
 		return newObj, s.client.UpdateStatus(req.Ctx, newObj)
 	}
 

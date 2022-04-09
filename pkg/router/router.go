@@ -27,7 +27,13 @@ type RouteBuilder struct {
 	objType       meta.Object
 	name          string
 	namespace     string
-	sel           map[string]string
+	middleware    []Middleware
+	sel           labels.Selector
+}
+
+func (r RouteBuilder) Middleware(m ...Middleware) RouteBuilder {
+	r.middleware = append(r.middleware, m...)
+	return r
 }
 
 func (r RouteBuilder) Namespace(namespace string) RouteBuilder {
@@ -35,7 +41,7 @@ func (r RouteBuilder) Namespace(namespace string) RouteBuilder {
 	return r
 }
 
-func (r RouteBuilder) Selector(sel map[string]string) RouteBuilder {
+func (r RouteBuilder) Selector(sel labels.Selector) RouteBuilder {
 	r.sel = sel
 	return r
 }
@@ -61,10 +67,8 @@ func (r RouteBuilder) HandlerFunc(h HandlerFunc) {
 
 func (r RouteBuilder) Handler(h Handler) {
 	result := h
-	if !r.includeRemove {
-		result = IgnoreRemoveHandler{
-			Next: result,
-		}
+	for i := len(r.middleware) - 1; i >= 0; i-- {
+		result = r.middleware[i](result)
 	}
 	if r.name != "" || r.namespace != "" {
 		result = NameNamespaceFilter{
@@ -73,12 +77,18 @@ func (r RouteBuilder) Handler(h Handler) {
 			Namespace: r.namespace,
 		}
 	}
-	if len(r.sel) > 0 {
+	if r.sel != nil {
 		result = SelectorFilter{
 			Next:     result,
-			Selector: labels.SelectorFromSet(r.sel),
+			Selector: r.sel,
 		}
 	}
+	if !r.includeRemove {
+		result = IgnoreRemoveHandler{
+			Next: result,
+		}
+	}
+
 	r.router.handlers.AddHandler(r.objType, result)
 }
 
@@ -87,6 +97,10 @@ func (r *Router) Start(ctx context.Context) error {
 }
 
 func (r *Router) Handle(objType meta.Object, h Handler) {
+	r.RouteBuilder.Type(objType).Handler(h)
+}
+
+func (r *Router) Middleware(objType meta.Object, h HandlerFunc) {
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 

@@ -46,15 +46,18 @@ func (h *handlers) Handle(req Request, resp *response) error {
 	)
 	h.lock.RUnlock()
 
-	i := 0
 	for _, h := range handlers {
 		err := h.Handle(req, resp)
 		if err == nil {
-			for ; i < len(resp.objects); i++ {
-				if isObjectForRequest(req, resp.objects[i]) {
-					req.Object = resp.objects[i]
+			newObjects := make([]meta.Object, 0, len(resp.objects))
+			for _, obj := range resp.objects {
+				if isObjectForRequest(req, obj) {
+					req.Object = obj
+				} else {
+					newObjects = append(newObjects, obj)
 				}
 			}
+			resp.objects = newObjects
 		} else {
 			errs = append(errs, err)
 		}
