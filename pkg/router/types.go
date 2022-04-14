@@ -39,6 +39,11 @@ type Client interface {
 	Writer
 }
 
+type Reader interface {
+	Getter
+	Lister
+}
+
 type Writer interface {
 	Delete(obj meta.Object) error
 	Update(obj meta.Object) error
@@ -46,8 +51,11 @@ type Writer interface {
 	Create(obj meta.Object) error
 }
 
-type Reader interface {
+type Getter interface {
 	Get(obj meta.Object, name string, opts *meta.GetOptions) error
+}
+
+type Lister interface {
 	List(obj meta.ObjectList, opts *meta.ListOptions) error
 }
 
