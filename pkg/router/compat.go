@@ -11,6 +11,31 @@ func ToReader(getter Getter) client2.Reader {
 	return readerWrapper{getter}
 }
 
+func FromReader(ctx context.Context, c client2.Reader) Reader {
+	return &getterWrapper{
+		ctx: ctx,
+		c:   c,
+	}
+}
+
+type getterWrapper struct {
+	c   client2.Reader
+	ctx context.Context
+}
+
+func (g *getterWrapper) Get(obj meta.Object, name string, opts *meta.GetOptions) error {
+	return g.c.Get(g.ctx, client2.ObjectKey{
+		Name:      name,
+		Namespace: opts.GetNamespace(""),
+	}, obj)
+}
+
+func (g *getterWrapper) List(obj meta.ObjectList, opts *meta.ListOptions) error {
+	return g.c.List(g.ctx, obj, &client2.ListOptions{
+		Namespace: opts.GetNamespace(""),
+	})
+}
+
 type readerWrapper struct {
 	getter Getter
 }
