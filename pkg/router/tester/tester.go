@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	yaml2 "sigs.k8s.io/yaml"
 )
 
 type Harness struct {
@@ -183,8 +184,8 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 			t.Fatalf("Missing expected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
 		}
 		if !assert.ObjectsAreEqual(expected[key], collected[key]) {
-			left, _ := yaml.Export(expected[key])
-			right, _ := yaml.Export(collected[key])
+			left, _ := yaml2.Marshal(expected[key])
+			right, _ := yaml2.Marshal(collected[key])
 
 			assert.Equal(t, string(left), string(right), "object %s/%s (%v) does not match", key.Namespace, key.Name, key.GVK)
 		}
