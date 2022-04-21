@@ -4,9 +4,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ibuildthecloud/baaah/pkg/lasso"
-	"github.com/ibuildthecloud/baaah/pkg/restconfig"
-	"github.com/ibuildthecloud/baaah/pkg/router"
+	"github.com/acorn-io/baaah/pkg/lasso"
+	"github.com/acorn-io/baaah/pkg/restconfig"
+	"github.com/acorn-io/baaah/pkg/router"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

@@ -3,7 +3,7 @@ package router
 import (
 	"sync"
 
-	"github.com/ibuildthecloud/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/rancher/wrangler/pkg/merr"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )

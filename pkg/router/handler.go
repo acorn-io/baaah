@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ibuildthecloud/baaah/pkg/backend"
-	"github.com/ibuildthecloud/baaah/pkg/meta"
-	"github.com/ibuildthecloud/baaah/pkg/typed"
+	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/typed"
 	"github.com/moby/locker"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"

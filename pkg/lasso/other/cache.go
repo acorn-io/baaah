@@ -1,7 +1,7 @@
 package other
 
 import (
-	"github.com/ibuildthecloud/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"

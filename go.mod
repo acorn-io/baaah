@@ -1,21 +1,23 @@
-module github.com/ibuildthecloud/baaah
+module github.com/acorn-io/baaah
 
 go 1.18
 
 require (
+	github.com/google/uuid v1.1.2
+	github.com/moby/locker v1.0.1
 	github.com/rancher/lasso v0.0.0-20220110204427-db9f3e569574
 	github.com/rancher/lasso/controller-runtime v0.0.0-20220110205840-98715bdd6b5b
 	github.com/rancher/wrangler v0.8.10
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/tools v0.1.6-0.20210820212750-d4cc65f0b2ff
-	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.23.0
 	k8s.io/client-go v0.23.0
 	k8s.io/code-generator v0.23.0
 	k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c
 	sigs.k8s.io/controller-runtime v0.11.0
 	sigs.k8s.io/controller-tools v0.8.0
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -50,6 +52,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	k8s.io/api v0.23.0 // indirect
 	k8s.io/apiextensions-apiserver v0.23.0 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.30.0 // indirect
@@ -57,5 +60,4 @@ require (
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.0 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
 )

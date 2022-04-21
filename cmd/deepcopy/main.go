@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/ibuildthecloud/baaah/pkg/deepcopy"
+	"github.com/acorn-io/baaah/pkg/deepcopy"
 )
 
 func main() {

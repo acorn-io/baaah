@@ -3,8 +3,8 @@ package crds
 import (
 	"context"
 
-	"github.com/ibuildthecloud/baaah/pkg/meta"
-	"github.com/ibuildthecloud/baaah/pkg/restconfig"
+	"github.com/acorn-io/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/restconfig"
 	"github.com/rancher/wrangler/pkg/crd"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

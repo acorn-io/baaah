@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ibuildthecloud/baaah/pkg/backend"
-	"github.com/ibuildthecloud/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/rancher/wrangler/pkg/apply"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"

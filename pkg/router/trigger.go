@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ibuildthecloud/baaah/pkg/backend"
-	"github.com/ibuildthecloud/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

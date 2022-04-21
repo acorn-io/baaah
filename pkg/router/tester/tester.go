@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ibuildthecloud/baaah/pkg/meta"
-	"github.com/ibuildthecloud/baaah/pkg/router"
+	"github.com/acorn-io/baaah/pkg/meta"
+	"github.com/acorn-io/baaah/pkg/router"
 	"github.com/rancher/wrangler/pkg/yaml"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
