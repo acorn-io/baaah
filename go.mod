@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/google/uuid v1.1.2
 	github.com/moby/locker v1.0.1
-	github.com/rancher/lasso v0.0.0-20220303220127-8cf5555ec03c
+	github.com/rancher/lasso v0.0.0-20220412224715-5f3517291ad4
 	github.com/rancher/lasso/controller-runtime v0.0.0-20220412224715-5f3517291ad4
 	github.com/rancher/wrangler v0.8.10
 	github.com/sirupsen/logrus v1.8.1
