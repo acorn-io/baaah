@@ -2,11 +2,9 @@ package typed
 
 import (
 	"sort"
-)
 
-type ordered interface {
-	string | ~int | float64 | float32
-}
+	"golang.org/x/exp/constraints"
+)
 
 func Keys[K comparable, T any](data map[K]T) (result []K) {
 	for k := range data {
@@ -15,7 +13,7 @@ func Keys[K comparable, T any](data map[K]T) (result []K) {
 	return
 }
 
-func SortedKeys[K ordered, T any](data map[K]T) (result []K) {
+func SortedKeys[K constraints.Ordered, T any](data map[K]T) (result []K) {
 	for k := range data {
 		result = append(result, k)
 	}
@@ -30,7 +28,7 @@ type Entry[K, V any] struct {
 	Value V
 }
 
-func Sorted[K ordered, V any](data map[K]V) []Entry[K, V] {
+func Sorted[K constraints.Ordered, V any](data map[K]V) []Entry[K, V] {
 	var result []Entry[K, V]
 	for _, key := range SortedKeys(data) {
 		result = append(result, Entry[K, V]{

@@ -10,7 +10,8 @@ require (
 	github.com/rancher/wrangler v0.8.10
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/tools v0.1.6-0.20210820212750-d4cc65f0b2ff
+	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
+	golang.org/x/tools v0.1.8-0.20211029000441-d6a9af8af023
 	k8s.io/apimachinery v0.23.6
 	k8s.io/client-go v0.23.6
 	k8s.io/code-generator v0.23.5
@@ -45,7 +46,7 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/mod v0.4.2 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
