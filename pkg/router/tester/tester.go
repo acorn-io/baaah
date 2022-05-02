@@ -174,15 +174,11 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 	}
 
 	for key := range collectedKeys {
-		if !expectedKeys[key] {
-			t.Fatalf("Unexpected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
-		}
+		assert.Containsf(t, expectedKeys, key, "Unexpected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
 	}
 
 	for key := range expectedKeys {
-		if !collectedKeys[key] {
-			t.Fatalf("Missing expected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
-		}
+		assert.Containsf(t, collectedKeys, key, "Missing expected object %s/%s: %v", key.Namespace, key.Name, key.GVK)
 		if !assert.ObjectsAreEqual(expected[key], collected[key]) {
 			left, _ := yaml2.Marshal(expected[key])
 			right, _ := yaml2.Marshal(collected[key])

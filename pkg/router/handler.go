@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/cache"
 )
 
 const TriggerPrefix = "_t "
@@ -34,6 +35,14 @@ type HandlerSet struct {
 	watchingLock sync.Mutex
 	watching     map[schema.GroupVersionKind]bool
 	locker       locker.Locker
+}
+
+type informerFactory struct {
+	hs *HandlerSet
+}
+
+func (i *informerFactory) Get(gvk schema.GroupVersionKind, gvr schema.GroupVersionResource) (cache.SharedIndexInformer, error) {
+	return i.hs.backend.GetInformerForKind(i.hs.ctx, gvk)
 }
 
 func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend, apply apply.Apply) *HandlerSet {
@@ -58,6 +67,7 @@ func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend,
 		},
 		watching: map[schema.GroupVersionKind]bool{},
 	}
+	hs.save.apply = apply.WithCacheTypeFactory(&informerFactory{hs: hs})
 	hs.triggers.watcher = hs
 	return hs
 }
