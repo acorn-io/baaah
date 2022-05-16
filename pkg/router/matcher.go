@@ -50,7 +50,6 @@ func (o *objectMatcher) Match(gvk schema.GroupVersionKind, ns, name string, obj 
 			return false
 		}
 		return o.Selector.Matches(labels.Set(obj.GetLabels()))
-
 	}
-	return false
+	return o.Namespace == ns
 }

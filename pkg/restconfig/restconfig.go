@@ -13,13 +13,17 @@ func Default() (*rest.Config, error) {
 	return New(scheme.Scheme)
 }
 
+func SetScheme(cfg *rest.Config, scheme *runtime.Scheme) *rest.Config {
+	cfg.NegotiatedSerializer = serializer.NewCodecFactory(scheme)
+	cfg.UserAgent = rest.DefaultKubernetesUserAgent()
+	return cfg
+}
+
 func New(scheme *runtime.Scheme) (*rest.Config, error) {
 	cfg, err := config.GetConfigWithContext("")
 	if err != nil {
 		return nil, err
 	}
-	cfg.NegotiatedSerializer = serializer.NewCodecFactory(scheme)
-	cfg.UserAgent = rest.DefaultKubernetesUserAgent()
 	cfg.RateLimiter = ratelimit.None
-	return cfg, err
+	return SetScheme(cfg, scheme), nil
 }

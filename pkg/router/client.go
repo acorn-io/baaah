@@ -95,6 +95,10 @@ func (a *reader) List(obj meta.ObjectList, opts *meta.ListOptions) error {
 		sel = opts.Selector
 	}
 
+	if err := a.registry.Watch(obj, ns, "", sel); err != nil {
+		return err
+	}
+
 	err := a.reader.List(a.ctx, obj, &meta.ListOptions{
 		Namespace: ns,
 		Selector:  sel,
@@ -103,8 +107,5 @@ func (a *reader) List(obj meta.ObjectList, opts *meta.ListOptions) error {
 		return err
 	}
 
-	if err := a.registry.Watch(obj, ns, "", sel); err != nil {
-		return err
-	}
 	return nil
 }
