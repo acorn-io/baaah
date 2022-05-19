@@ -1,6 +1,8 @@
 package restconfig
 
 import (
+	"os"
+
 	"github.com/rancher/wrangler/pkg/ratelimit"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -20,7 +22,7 @@ func SetScheme(cfg *rest.Config, scheme *runtime.Scheme) *rest.Config {
 }
 
 func New(scheme *runtime.Scheme) (*rest.Config, error) {
-	cfg, err := config.GetConfigWithContext("")
+	cfg, err := config.GetConfigWithContext(os.Getenv("CONTEXT"))
 	if err != nil {
 		return nil, err
 	}
