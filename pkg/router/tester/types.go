@@ -83,7 +83,7 @@ func (c *Client) List(objList meta.ObjectList, opts *meta.ListOptions) error {
 		if reflect.TypeOf(obj) != t {
 			continue
 		}
-		if opts != nil && !opts.Selector.Matches(labels.Set(testObj.GetLabels())) {
+		if opts != nil && opts.Selector != nil && !opts.Selector.Matches(labels.Set(testObj.GetLabels())) {
 			continue
 		}
 		copy(obj, testObj)
