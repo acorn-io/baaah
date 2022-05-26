@@ -3,11 +3,11 @@ package router
 import (
 	"context"
 
-	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/meta"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type TriggerRegistry interface {
@@ -18,94 +18,124 @@ type TriggerRegistry interface {
 type client struct {
 	reader
 	writer
+	status
+}
+
+func (c *client) Scheme() *runtime.Scheme {
+	return c.reader.client.Scheme()
+}
+
+func (c *client) RESTMapper() meta.RESTMapper {
+	return c.reader.client.RESTMapper()
 }
 
 type writer struct {
-	ctx      context.Context
-	writer   backend.Writer
+	client   kclient.Client
 	registry TriggerRegistry
 }
 
-func (w *writer) Delete(obj meta.Object) error {
-	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+func (w *writer) DeleteAllOf(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteAllOfOption) error {
+	delOpts := &kclient.DeleteAllOfOptions{}
+	for _, opt := range opts {
+		opt.ApplyToDeleteAllOf(delOpts)
+	}
+	if err := w.registry.Watch(obj, delOpts.Namespace, "", delOpts.LabelSelector); err != nil {
 		return err
 	}
-	return w.writer.Delete(w.ctx, obj)
+	return w.client.DeleteAllOf(ctx, obj, opts...)
 }
 
-func (w *writer) Update(obj meta.Object) error {
+func (w *writer) Delete(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteOption) error {
 	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
 		return err
 	}
-	return w.writer.Update(w.ctx, obj)
+	return w.client.Delete(ctx, obj, opts...)
 }
 
-func (w *writer) UpdateStatus(obj meta.Object) error {
+func (w *writer) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
 	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
 		return err
 	}
-	return w.writer.UpdateStatus(w.ctx, obj)
+	return w.client.Patch(ctx, obj, patch, opts...)
 }
 
-func (w *writer) Create(obj meta.Object) error {
+func (w *writer) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
 	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
 		return err
 	}
-	return w.writer.Create(w.ctx, obj)
+	return w.client.Update(ctx, obj, opts...)
+}
+
+func (w *writer) Create(ctx context.Context, obj kclient.Object, opts ...kclient.CreateOption) error {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
+	return w.client.Create(ctx, obj, opts...)
+}
+
+type statusClient struct {
+	client   kclient.Client
+	registry TriggerRegistry
+}
+
+type status struct {
+	client   kclient.Client
+	registry TriggerRegistry
+}
+
+func (s *status) Status() kclient.StatusWriter {
+	return &statusClient{
+		client:   s.client,
+		registry: s.registry,
+	}
+}
+
+func (s *statusClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
+	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
+	return s.client.Status().Update(ctx, obj, opts...)
+}
+
+func (s *statusClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
+	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+		return err
+	}
+	return s.client.Status().Patch(ctx, obj, patch, opts...)
 }
 
 type reader struct {
-	ctx context.Context
-
 	scheme           *runtime.Scheme
-	reader           backend.Reader
+	client           kclient.Client
 	defaultNamespace string
 	registry         TriggerRegistry
 }
 
-func (a *reader) Get(obj meta.Object, name string, opts *meta.GetOptions) error {
-	ns := a.defaultNamespace
-	if opts != nil && opts.Namespace != "" {
-		ns = opts.Namespace
+func (a *reader) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object) error {
+	if key.Namespace == "" {
+		key.Namespace = a.defaultNamespace
 	}
 
-	err := a.reader.Get(a.ctx, obj, name, &meta.GetOptions{
-		Namespace: ns,
-	})
-	if err != nil {
+	if err := a.registry.Watch(obj, key.Namespace, key.Name, nil); err != nil {
 		return err
 	}
 
-	if err := a.registry.Watch(obj, ns, name, nil); err != nil {
-		return err
-	}
-	return nil
+	return a.client.Get(ctx, key, obj)
 }
 
-func (a *reader) List(obj meta.ObjectList, opts *meta.ListOptions) error {
-	var (
-		sel labels.Selector
-		ns  = a.defaultNamespace
-	)
-
-	if opts != nil {
-		if opts.Namespace != "" {
-			ns = opts.Namespace
-		}
-		sel = opts.Selector
+func (a *reader) List(ctx context.Context, list kclient.ObjectList, opts ...kclient.ListOption) error {
+	listOpt := &kclient.ListOptions{}
+	for _, opt := range opts {
+		opt.ApplyToList(listOpt)
 	}
 
-	if err := a.registry.Watch(obj, ns, "", sel); err != nil {
+	if listOpt.Namespace == "" {
+		listOpt.Namespace = a.defaultNamespace
+	}
+
+	if err := a.registry.Watch(list, listOpt.Namespace, "", listOpt.LabelSelector); err != nil {
 		return err
 	}
 
-	err := a.reader.List(a.ctx, obj, &meta.ListOptions{
-		Namespace: ns,
-		Selector:  sel,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return a.client.List(ctx, list, listOpt)
 }

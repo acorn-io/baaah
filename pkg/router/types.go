@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type AddToSchemer func(s *runtime.Scheme) error
@@ -24,8 +24,8 @@ func (h HandlerFunc) Handle(req Request, resp Response) error {
 }
 
 type Request struct {
-	Client      Client
-	Object      meta.Object
+	Client      kclient.Client
+	Object      kclient.Object
 	Ctx         context.Context
 	GVK         schema.GroupVersionKind
 	Namespace   string
@@ -34,32 +34,22 @@ type Request struct {
 	FromTrigger bool
 }
 
-type Client interface {
-	Reader
-	Writer
+func (r *Request) List(object kclient.ObjectList, opts *kclient.ListOptions) error {
+	return r.Client.List(r.Ctx, object, opts)
 }
 
-type Reader interface {
-	Getter
-	Lister
-}
-
-type Writer interface {
-	Delete(obj meta.Object) error
-	Update(obj meta.Object) error
-	UpdateStatus(obj meta.Object) error
-	Create(obj meta.Object) error
-}
-
-type Getter interface {
-	Get(obj meta.Object, name string, opts *meta.GetOptions) error
-}
-
-type Lister interface {
-	List(obj meta.ObjectList, opts *meta.ListOptions) error
+func (r *Request) Get(object kclient.Object, namespace, name string) error {
+	return r.Client.Get(r.Ctx, Key(namespace, name), object)
 }
 
 type Response interface {
 	RetryAfter(delay time.Duration)
-	Objects(obj ...meta.Object)
+	Objects(obj ...kclient.Object)
+}
+
+func Key(namespace, name string) kclient.ObjectKey {
+	return kclient.ObjectKey{
+		Name:      name,
+		Namespace: namespace,
+	}
 }

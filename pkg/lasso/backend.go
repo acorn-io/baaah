@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/acorn-io/baaah/pkg/router"
 	"github.com/rancher/lasso/pkg/controller"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,16 +16,17 @@ import (
 )
 
 type Backend struct {
+	client.Client
+
 	cacheFactory controller.SharedControllerFactory
 	cache        cache.Cache
-	client       client.Client
 	started      bool
 }
 
 func NewBackend(cacheFactory controller.SharedControllerFactory, client client.Client, cache cache.Cache) *Backend {
 	return &Backend{
+		Client:       client,
 		cacheFactory: cacheFactory,
-		client:       client,
 		cache:        cache,
 	}
 }
@@ -67,38 +67,8 @@ func (b *Backend) Watch(ctx context.Context, gvk schema.GroupVersionKind, name s
 	return c.Start(ctx, 5)
 }
 
-func (b *Backend) Get(ctx context.Context, obj meta.Object, name string, opts *meta.GetOptions) error {
-	return b.client.Get(ctx, client.ObjectKey{
-		Namespace: opts.GetNamespace(""),
-		Name:      name,
-	}, obj)
-}
-
-func (b *Backend) List(ctx context.Context, obj meta.ObjectList, opts *meta.ListOptions) error {
-	return b.client.List(ctx, obj, &client.ListOptions{
-		Namespace:     opts.GetNamespace(""),
-		LabelSelector: opts.GetSelector(),
-	})
-}
-
 func (b *Backend) GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error) {
 	return apiutil.GVKForObject(obj, scheme)
-}
-
-func (b *Backend) Delete(ctx context.Context, obj meta.Object) error {
-	return b.client.Delete(ctx, obj)
-}
-
-func (b *Backend) Update(ctx context.Context, obj meta.Object) error {
-	return b.client.Update(ctx, obj)
-}
-
-func (b *Backend) UpdateStatus(ctx context.Context, obj meta.Object) error {
-	return b.client.Status().Update(ctx, obj)
-}
-
-func (b *Backend) Create(ctx context.Context, obj meta.Object) error {
-	return b.client.Create(ctx, obj)
 }
 
 func (b *Backend) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (kcache.SharedIndexInformer, error) {

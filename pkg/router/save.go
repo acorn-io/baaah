@@ -6,22 +6,22 @@ import (
 	"reflect"
 
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/rancher/wrangler/pkg/apply"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kcache "k8s.io/client-go/tools/cache"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type save struct {
 	setID  string
 	apply  apply.Apply
 	cache  backend.CacheFactory
-	client backend.Writer
+	client kclient.Client
 }
 
-func (s *save) save(unmodified runtime.Object, req Request, resp *response, watchingGVKS []schema.GroupVersionKind) (meta.Object, error) {
+func (s *save) save(unmodified runtime.Object, req Request, resp *response, watchingGVKS []schema.GroupVersionKind) (kclient.Object, error) {
 	apply := s.apply.
 		WithContext(req.Ctx).
 		WithSetID(s.setID).
@@ -45,7 +45,7 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 
 	newObj := req.Object
 	if newObj != nil && statusChanged(unmodified, newObj) {
-		return newObj, s.client.UpdateStatus(req.Ctx, newObj)
+		return newObj, s.client.Status().Update(req.Ctx, newObj)
 	}
 
 	return newObj, nil

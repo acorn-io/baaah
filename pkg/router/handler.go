@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/acorn-io/baaah/pkg/typed"
 	"github.com/moby/locker"
 	"github.com/rancher/wrangler/pkg/apply"
@@ -19,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const TriggerPrefix = "_t "
@@ -80,12 +80,12 @@ func (m *HandlerSet) Start(ctx context.Context) error {
 	return m.backend.Start(ctx)
 }
 
-func toObject(obj runtime.Object) meta.Object {
+func toObject(obj runtime.Object) kclient.Object {
 	if obj == nil {
 		return nil
 	}
 	// yep panic if it's not this interface
-	return obj.DeepCopyObject().(meta.Object)
+	return obj.DeepCopyObject().(kclient.Object)
 }
 
 type triggerRegistry struct {
@@ -134,15 +134,17 @@ func (m *HandlerSet) newRequestResponse(gvk schema.GroupVersionKind, key string,
 		FromTrigger: trigger,
 		Client: &client{
 			reader: reader{
-				ctx:              m.ctx,
 				scheme:           m.scheme,
-				reader:           m.backend,
+				client:           m.backend,
 				defaultNamespace: ns,
 				registry:         triggerRegistry,
 			},
 			writer: writer{
-				ctx:      m.ctx,
-				writer:   m.backend,
+				client:   m.backend,
+				registry: triggerRegistry,
+			},
+			status: status{
+				client:   m.backend,
 				registry: triggerRegistry,
 			},
 		},
@@ -157,7 +159,7 @@ func (m *HandlerSet) newRequestResponse(gvk schema.GroupVersionKind, key string,
 	return req, &resp, nil
 }
 
-func (m *HandlerSet) AddHandler(objType meta.Object, handler Handler) {
+func (m *HandlerSet) AddHandler(objType kclient.Object, handler Handler) {
 	gvk, err := m.backend.GVKForObject(objType, m.scheme)
 	if err != nil {
 		panic(fmt.Sprintf("scheme does not know gvk for %T", objType))
@@ -198,9 +200,7 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 			ns = ""
 		}
 
-		err = m.backend.Get(m.ctx, obj.(meta.Object), name, &meta.GetOptions{
-			Namespace: ns,
-		})
+		err = m.backend.Get(m.ctx, kclient.ObjectKey{Name: name, Namespace: ns}, obj.(kclient.Object))
 		if err == nil {
 			runtimeObject = obj
 		} else if err != nil && !apierror.IsNotFound(err) {
@@ -249,7 +249,7 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 
 type response struct {
 	delay    time.Duration
-	objects  []meta.Object
+	objects  []kclient.Object
 	registry TriggerRegistry
 }
 
@@ -259,7 +259,7 @@ func (r *response) RetryAfter(delay time.Duration) {
 	}
 }
 
-func (r *response) Objects(objs ...meta.Object) {
+func (r *response) Objects(objs ...kclient.Object) {
 	for _, obj := range objs {
 		r.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil)
 		r.objects = append(r.objects, obj)

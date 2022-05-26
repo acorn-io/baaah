@@ -3,11 +3,11 @@ package crds
 import (
 	"context"
 
-	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/acorn-io/baaah/pkg/restconfig"
 	"github.com/rancher/wrangler/pkg/crd"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func Create(ctx context.Context, scheme *runtime.Scheme, gvs ...schema.GroupVersion) error {
@@ -20,8 +20,8 @@ func Create(ctx context.Context, scheme *runtime.Scheme, gvs ...schema.GroupVers
 			if err != nil {
 				return err
 			}
-			_, isObj := obj.(meta.Object)
-			_, isListObj := obj.(meta.ObjectList)
+			_, isObj := obj.(kclient.Object)
+			_, isListObj := obj.(kclient.ObjectList)
 			if isObj && !isListObj {
 				wranglerCRDs = append(wranglerCRDs, crd.CRD{
 					GVK:          gvk,

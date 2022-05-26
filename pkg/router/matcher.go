@@ -1,13 +1,13 @@
 package router
 
 import (
-	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type matcher interface {
-	Match(gvk schema.GroupVersionKind, ns, name string, obj meta.Object) bool
+	Match(gvk schema.GroupVersionKind, ns, name string, obj kclient.Object) bool
 	Equals(m matcher) bool
 }
 
@@ -37,7 +37,7 @@ func (o *objectMatcher) Equals(other matcher) bool {
 	return true
 }
 
-func (o *objectMatcher) Match(gvk schema.GroupVersionKind, ns, name string, obj meta.Object) bool {
+func (o *objectMatcher) Match(gvk schema.GroupVersionKind, ns, name string, obj kclient.Object) bool {
 	if o.Name != "" {
 		return o.Name == name &&
 			o.Namespace == ns

@@ -11,25 +11,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/acorn-io/baaah/pkg/router"
 	"github.com/rancher/wrangler/pkg/yaml"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	yaml2 "sigs.k8s.io/yaml"
 )
 
 type Harness struct {
 	Scheme         *runtime.Scheme
-	Existing       []meta.Object
-	ExpectedOutput []meta.Object
+	Existing       []kclient.Object
+	ExpectedOutput []kclient.Object
 	ExpectedDelay  time.Duration
 }
 
-func genericToTyped(scheme *runtime.Scheme, objs []runtime.Object) ([]meta.Object, error) {
-	result := make([]meta.Object, 0, len(objs))
+func genericToTyped(scheme *runtime.Scheme, objs []runtime.Object) ([]kclient.Object, error) {
+	result := make([]kclient.Object, 0, len(objs))
 	for _, obj := range objs {
 		typedObj, err := scheme.New(obj.GetObjectKind().GroupVersionKind())
 		if err != nil {
@@ -43,12 +43,12 @@ func genericToTyped(scheme *runtime.Scheme, objs []runtime.Object) ([]meta.Objec
 		if err := json.Unmarshal(bytes, typedObj); err != nil {
 			return nil, err
 		}
-		result = append(result, typedObj.(meta.Object))
+		result = append(result, typedObj.(kclient.Object))
 	}
 	return result, nil
 }
 
-func readFile(scheme *runtime.Scheme, base, file string) ([]meta.Object, error) {
+func readFile(scheme *runtime.Scheme, base, file string) ([]kclient.Object, error) {
 	path := filepath.Join(base, file)
 	data, err := ioutil.ReadFile(filepath.Join(base, file))
 	if os.IsNotExist(err) {
@@ -63,7 +63,7 @@ func readFile(scheme *runtime.Scheme, base, file string) ([]meta.Object, error) 
 	return genericToTyped(scheme, objs)
 }
 
-func FromDir(scheme *runtime.Scheme, path string) (*Harness, meta.Object, error) {
+func FromDir(scheme *runtime.Scheme, path string) (*Harness, kclient.Object, error) {
 	input, err := readFile(scheme, path, "input.yaml")
 	if err != nil {
 		return nil, nil, err
@@ -104,11 +104,11 @@ func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler rout
 	})
 }
 
-func (b *Harness) InvokeFunc(t *testing.T, input meta.Object, handler router.HandlerFunc) (*Response, error) {
+func (b *Harness) InvokeFunc(t *testing.T, input kclient.Object, handler router.HandlerFunc) (*Response, error) {
 	return b.Invoke(t, input, handler)
 }
 
-func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler) (*Response, error) {
+func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Handler) (*Response, error) {
 	gvk, err := apiutil.GVKForObject(input, b.Scheme)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 		client = &Client{
 			DefaultNamespace: input.GetNamespace(),
 			Objects:          b.Existing,
-			Scheme:           b.Scheme,
+			SchemeObj:        b.Scheme,
 		}
 		resp = Response{
 			Client: client,
@@ -190,8 +190,8 @@ func (b *Harness) Invoke(t *testing.T, input meta.Object, handler router.Handler
 	return &resp, nil
 }
 
-func toObjectMap(scheme *runtime.Scheme, objs []meta.Object) (map[ObjectKey]meta.Object, error) {
-	result := map[ObjectKey]meta.Object{}
+func toObjectMap(scheme *runtime.Scheme, objs []kclient.Object) (map[ObjectKey]kclient.Object, error) {
+	result := map[ObjectKey]kclient.Object{}
 	for _, o := range objs {
 		gvk, err := apiutil.GVKForObject(o, scheme)
 		if err != nil {

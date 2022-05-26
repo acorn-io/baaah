@@ -3,8 +3,8 @@ package router
 import (
 	"context"
 
-	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/labels"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Router struct {
@@ -24,7 +24,7 @@ func New(handlerSet *HandlerSet) *Router {
 type RouteBuilder struct {
 	includeRemove bool
 	router        *Router
-	objType       meta.Object
+	objType       kclient.Object
 	name          string
 	namespace     string
 	middleware    []Middleware
@@ -56,7 +56,7 @@ func (r RouteBuilder) IncludeRemoved() RouteBuilder {
 	return r
 }
 
-func (r RouteBuilder) Type(objType meta.Object) RouteBuilder {
+func (r RouteBuilder) Type(objType kclient.Object) RouteBuilder {
 	r.objType = objType
 	return r
 }
@@ -96,15 +96,15 @@ func (r *Router) Start(ctx context.Context) error {
 	return r.handlers.Start(ctx)
 }
 
-func (r *Router) Handle(objType meta.Object, h Handler) {
+func (r *Router) Handle(objType kclient.Object, h Handler) {
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 
-func (r *Router) Middleware(objType meta.Object, h HandlerFunc) {
+func (r *Router) Middleware(objType kclient.Object, h HandlerFunc) {
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 
-func (r *Router) HandleFunc(objType meta.Object, h HandlerFunc) {
+func (r *Router) HandleFunc(objType kclient.Object, h HandlerFunc) {
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 

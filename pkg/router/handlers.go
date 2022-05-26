@@ -3,12 +3,12 @@ package router
 import (
 	"sync"
 
-	"github.com/acorn-io/baaah/pkg/meta"
 	"github.com/rancher/wrangler/pkg/merr"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func isObjectForRequest(req Request, obj meta.Object) bool {
+func isObjectForRequest(req Request, obj kclient.Object) bool {
 	return obj.GetName() == req.Name &&
 		obj.GetNamespace() == req.Namespace &&
 		obj.GetObjectKind().GroupVersionKind() == req.GVK
@@ -49,7 +49,7 @@ func (h *handlers) Handle(req Request, resp *response) error {
 	for _, h := range handlers {
 		err := h.Handle(req, resp)
 		if err == nil {
-			newObjects := make([]meta.Object, 0, len(resp.objects))
+			newObjects := make([]kclient.Object, 0, len(resp.objects))
 			for _, obj := range resp.objects {
 				if isObjectForRequest(req, obj) {
 					req.Object = obj

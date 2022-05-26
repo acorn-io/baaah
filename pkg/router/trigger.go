@@ -5,17 +5,17 @@ import (
 	"sync"
 
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type triggers struct {
 	lock      sync.RWMutex
 	matchers  map[schema.GroupVersionKind]map[enqueueTarget][]matcher
 	trigger   backend.Trigger
-	gvkLookup backend.Reader
+	gvkLookup backend.Backend
 	scheme    *runtime.Scheme
 	watcher   watcher
 }
@@ -91,7 +91,7 @@ func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj r
 		return gvk, err
 	}
 
-	if _, ok := obj.(meta.ObjectList); ok {
+	if _, ok := obj.(kclient.ObjectList); ok {
 		gvk.Kind = strings.TrimSuffix(gvk.Kind, "List")
 	}
 

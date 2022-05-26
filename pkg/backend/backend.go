@@ -3,10 +3,10 @@ package backend
 import (
 	"context"
 
-	"github.com/acorn-io/baaah/pkg/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Callback func(gvk schema.GroupVersionKind, key string, obj runtime.Object) (runtime.Object, error)
@@ -21,27 +21,14 @@ type Watcher interface {
 
 type Backend interface {
 	Trigger
-	Watcher
-	Reader
-	Writer
 	CacheFactory
+	Watcher
+	kclient.Client
 
 	Start(ctx context.Context) error
+	GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error)
 }
 
 type CacheFactory interface {
 	GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (cache.SharedIndexInformer, error)
-}
-
-type Writer interface {
-	Delete(ctx context.Context, obj meta.Object) error
-	Update(ctx context.Context, obj meta.Object) error
-	UpdateStatus(ctx context.Context, obj meta.Object) error
-	Create(ctx context.Context, obj meta.Object) error
-}
-
-type Reader interface {
-	Get(ctx context.Context, obj meta.Object, name string, opts *meta.GetOptions) error
-	List(ctx context.Context, obj meta.ObjectList, opts *meta.ListOptions) error
-	GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error)
 }
