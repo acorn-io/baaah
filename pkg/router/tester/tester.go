@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,19 +49,44 @@ func genericToTyped(scheme *runtime.Scheme, objs []runtime.Object) ([]kclient.Ob
 	return result, nil
 }
 
-func readFile(scheme *runtime.Scheme, base, file string) ([]kclient.Object, error) {
-	path := filepath.Join(base, file)
-	data, err := ioutil.ReadFile(filepath.Join(base, file))
+func readFile(scheme *runtime.Scheme, dir, file string) ([]kclient.Object, error) {
+	var (
+		path = filepath.Join(dir, file)
+		objs []kclient.Object
+	)
+
+	files, err := ioutil.ReadDir(path + ".d")
 	if os.IsNotExist(err) {
-		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".yaml") {
+			continue
+		}
+		nestedObj, err := readFile(scheme, path+".d", file.Name())
+		if err != nil {
+			return nil, err
+		}
+		objs = append(objs, nestedObj...)
+	}
+
+	data, err := ioutil.ReadFile(path)
+	if os.IsNotExist(err) {
+		return objs, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
-	objs, err := yaml.ToObjects(bytes.NewBuffer(data))
+	newObjects, err := yaml.ToObjects(bytes.NewBuffer(data))
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling %s: %w", path, err)
 	}
-	return genericToTyped(scheme, objs)
+	typedObjects, err := genericToTyped(scheme, newObjects)
+	if err != nil {
+		return nil, err
+	}
+	return append(objs, typedObjects...), nil
 }
 
 func FromDir(scheme *runtime.Scheme, path string) (*Harness, kclient.Object, error) {
