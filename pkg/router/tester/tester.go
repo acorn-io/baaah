@@ -134,42 +134,37 @@ func (b *Harness) InvokeFunc(t *testing.T, input kclient.Object, handler router.
 	return b.Invoke(t, input, handler)
 }
 
-func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Handler) (*Response, error) {
-	gvk, err := apiutil.GVKForObject(input, b.Scheme)
+func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, existing ...kclient.Object) router.Request {
+	gvk, err := apiutil.GVKForObject(input, scheme)
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
 
-	ctx := context.Background()
-	deadline, ok := t.Deadline()
-	if ok {
-		newCtx, cancel := context.WithDeadline(ctx, deadline)
-		defer cancel()
-		ctx = newCtx
-	}
-
-	var (
-		client = &Client{
+	return router.Request{
+		Client: &Client{
 			DefaultNamespace: input.GetNamespace(),
-			Objects:          b.Existing,
-			SchemeObj:        b.Scheme,
-		}
+			Objects:          existing,
+			SchemeObj:        scheme,
+		},
+		Object:      input,
+		Ctx:         context.TODO(),
+		GVK:         gvk,
+		Namespace:   input.GetNamespace(),
+		Name:        input.GetName(),
+		Key:         toKey(input.GetNamespace(), input.GetName()),
+		FromTrigger: false,
+	}
+}
+
+func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Handler) (*Response, error) {
+	var (
+		req  = NewRequest(t, b.Scheme, input, b.Existing...)
 		resp = Response{
-			Client: client,
-		}
-		req = router.Request{
-			Client:      client,
-			Object:      input,
-			Ctx:         ctx,
-			GVK:         gvk,
-			Namespace:   input.GetNamespace(),
-			Name:        input.GetName(),
-			Key:         toKey(input.GetNamespace(), input.GetName()),
-			FromTrigger: false,
+			Client: req.Client.(*Client),
 		}
 	)
 
-	err = handler.Handle(req, &resp)
+	err := handler.Handle(req, &resp)
 	if err != nil {
 		return &resp, err
 	}
