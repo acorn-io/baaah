@@ -6,6 +6,16 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+func Concat[K constraints.Ordered, V any](maps ...map[K]V) map[K]V {
+	result := map[K]V{}
+	for _, m := range maps {
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
+}
+
 func Keys[K comparable, T any](data map[K]T) (result []K) {
 	for k := range data {
 		result = append(result, k)
