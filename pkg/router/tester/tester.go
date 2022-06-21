@@ -1,6 +1,7 @@
 package tester
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -204,11 +205,27 @@ func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Hand
 			left, _ := yaml2.Marshal(expected[key])
 			right, _ := yaml2.Marshal(collected[key])
 
+			left = stripLastTransition(left)
+			right = stripLastTransition(right)
 			assert.Equal(t, string(left), string(right), "object %s/%s (%v) does not match", key.Namespace, key.Name, key.GVK)
 		}
 	}
 
 	return &resp, nil
+}
+
+func stripLastTransition(buf []byte) []byte {
+	result := &bytes.Buffer{}
+	s := bufio.NewScanner(bytes.NewReader(buf))
+	for s.Scan() {
+		line := s.Text()
+		if strings.Contains(line, "lastTransitionTime:") {
+			continue
+		}
+		result.WriteString(line)
+		result.WriteString("\n")
+	}
+	return result.Bytes()
 }
 
 func toObjectMap(scheme *runtime.Scheme, objs []kclient.Object) (map[ObjectKey]kclient.Object, error) {

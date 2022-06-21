@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/typed"
 	"github.com/moby/locker"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 	apierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -96,7 +96,7 @@ type triggerRegistry struct {
 }
 
 func (t *triggerRegistry) WatchingGVKs() []schema.GroupVersionKind {
-	return typed.Keys(t.gvks)
+	return maps.Keys(t.gvks)
 
 }
 func (t *triggerRegistry) Watch(obj runtime.Object, namespace, name string, sel labels.Selector) error {
@@ -237,7 +237,7 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	}
 
 	if handles {
-		newObj, err := m.save.save(unmodifiedObject, req, resp, typed.Keys(m.watching))
+		newObj, err := m.save.save(unmodifiedObject, req, resp, maps.Keys(m.watching))
 		if err != nil {
 			return nil, err
 		}
