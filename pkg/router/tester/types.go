@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/acorn-io/baaah/pkg/randomtoken"
 	"github.com/google/uuid"
-	"github.com/rancher/wrangler/pkg/randomtoken"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta2 "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"

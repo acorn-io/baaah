@@ -8,7 +8,6 @@ import (
 	lclient "github.com/rancher/lasso/pkg/client"
 	"github.com/rancher/lasso/pkg/controller"
 	"github.com/rancher/lasso/pkg/dynamic"
-	"github.com/rancher/wrangler/pkg/apply"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
@@ -19,7 +18,6 @@ import (
 )
 
 type Runtime struct {
-	Apply   apply.Apply
 	Backend *Backend
 }
 
@@ -58,7 +56,6 @@ func NewRuntime(cfg *rest.Config, scheme *runtime.Scheme) (*Runtime, error) {
 	})
 
 	return &Runtime{
-		Apply:   apply.New(dc, apply.NewClientFactory(cfg)),
 		Backend: NewBackend(factory, client, cache),
 	}, nil
 }

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/acorn-io/baaah/pkg/router"
-	"github.com/rancher/wrangler/pkg/yaml"
+	"github.com/acorn-io/baaah/pkg/yaml"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

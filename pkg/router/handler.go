@@ -7,17 +7,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/acorn-io/baaah/pkg/apply"
 	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/merr"
 	"github.com/moby/locker"
-	"github.com/rancher/wrangler/pkg/apply"
-	"github.com/rancher/wrangler/pkg/merr"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	apierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/cache"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,15 +36,7 @@ type HandlerSet struct {
 	locker       locker.Locker
 }
 
-type informerFactory struct {
-	hs *HandlerSet
-}
-
-func (i *informerFactory) Get(gvk schema.GroupVersionKind, gvr schema.GroupVersionResource) (cache.SharedIndexInformer, error) {
-	return i.hs.backend.GetInformerForKind(i.hs.ctx, gvk)
-}
-
-func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend, apply apply.Apply) *HandlerSet {
+func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend) *HandlerSet {
 	hs := &HandlerSet{
 		name:    name,
 		scheme:  scheme,
@@ -60,14 +51,12 @@ func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend,
 			scheme:    scheme,
 		},
 		save: save{
-			setID:  name,
-			apply:  apply,
+			apply:  apply.New(backend),
 			cache:  backend,
 			client: backend,
 		},
 		watching: map[schema.GroupVersionKind]bool{},
 	}
-	hs.save.apply = apply.WithCacheTypeFactory(&informerFactory{hs: hs})
 	hs.triggers.watcher = hs
 	return hs
 }

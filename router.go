@@ -22,6 +22,6 @@ func DefaultRouter(scheme *runtime.Scheme) (*router.Router, error) {
 	}
 
 	name := filepath.Base(os.Args[0])
-	handlerSet := router.NewHandlerSet(name, scheme, runtime.Backend, runtime.Apply)
+	handlerSet := router.NewHandlerSet(name, scheme, runtime.Backend)
 	return router.New(handlerSet), nil
 }

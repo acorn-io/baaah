@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/acorn-io/baaah/pkg/apply"
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/rancher/wrangler/pkg/apply"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kcache "k8s.io/client-go/tools/cache"
@@ -15,31 +16,23 @@ import (
 )
 
 type save struct {
-	setID  string
 	apply  apply.Apply
 	cache  backend.CacheFactory
 	client kclient.Client
 }
 
 func (s *save) save(unmodified runtime.Object, req Request, resp *response, watchingGVKS []schema.GroupVersionKind) (kclient.Object, error) {
-	apply := s.apply.
-		WithContext(req.Ctx).
-		WithSetID(s.setID).
-		WithCacheTypeFactory(saveInformerFactory{
-			ctx:   req.Ctx,
-			cache: s.cache,
-		}).
-		WithSetOwnerReference(true, false).
-		WithOwnerKey(req.Key, req.GVK).
-		WithOwner(unmodified).
-		WithGVK(watchingGVKS...)
-
-	objs := make([]runtime.Object, 0, len(resp.objects))
-	for _, obj := range resp.objects {
-		objs = append(objs, obj)
+	var owner = req.Object
+	if owner == nil {
+		owner := &unstructured.Unstructured{}
+		owner.SetGroupVersionKind(req.GVK)
+		owner.SetNamespace(req.Namespace)
+		owner.SetName(req.Name)
 	}
+	apply := s.apply.
+		WithPruneGVKs(watchingGVKS...)
 
-	if err := apply.ApplyObjects(objs...); err != nil {
+	if err := apply.Apply(req.Ctx, owner, resp.objects...); err != nil {
 		return nil, err
 	}
 

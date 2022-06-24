@@ -3,7 +3,7 @@ package restconfig
 import (
 	"os"
 
-	"github.com/rancher/wrangler/pkg/ratelimit"
+	"github.com/acorn-io/baaah/pkg/ratelimit"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
