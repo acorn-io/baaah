@@ -138,7 +138,10 @@ func GetLabelsAndAnnotations(scheme *runtime.Scheme, ownerSubContext string, own
 }
 
 func (a *apply) injectLabelsAndAnnotations(in *objectset.ObjectSet, labels, annotations map[string]string) (*objectset.ObjectSet, error) {
-	result := objectset.NewObjectSet(a.client.Scheme())
+	result, err := objectset.NewObjectSet(a.client.Scheme())
+	if err != nil {
+		return nil, err
+	}
 
 	for _, objMap := range in.ObjectsByGVK() {
 		for _, obj := range objMap {

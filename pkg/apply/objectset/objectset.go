@@ -50,15 +50,14 @@ type ObjectSet struct {
 	gvkSeen     map[schema.GroupVersionKind]bool
 }
 
-func NewObjectSet(scheme *runtime.Scheme, objs ...kclient.Object) *ObjectSet {
+func NewObjectSet(scheme *runtime.Scheme, objs ...kclient.Object) (*ObjectSet, error) {
 	os := &ObjectSet{
 		scheme:      scheme,
 		objects:     ObjectByGVK{},
 		objectsByGK: ObjectByGK{},
 		gvkSeen:     map[schema.GroupVersionKind]bool{},
 	}
-	os.Add(objs...)
-	return os
+	return os, os.Add(objs...)
 }
 
 func (o *ObjectSet) ObjectsByGVK() ObjectByGVK {
@@ -77,11 +76,13 @@ func (o *ObjectSet) All() []kclient.Object {
 	return o.order
 }
 
-func (o *ObjectSet) Add(objs ...kclient.Object) *ObjectSet {
+func (o *ObjectSet) Add(objs ...kclient.Object) error {
 	for _, obj := range objs {
-		o.add(obj)
+		if err := o.add(obj); err != nil {
+			return err
+		}
 	}
-	return o
+	return nil
 }
 
 func (o *ObjectSet) add(obj kclient.Object) error {

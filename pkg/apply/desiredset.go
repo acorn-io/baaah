@@ -25,7 +25,11 @@ type apply struct {
 func (a apply) Apply(ctx context.Context, owner kclient.Object, objs ...kclient.Object) error {
 	a.ctx = ctx
 	a.owner = owner
-	return a.apply(objectset.NewObjectSet(a.client.Scheme(), objs...))
+	os, err := objectset.NewObjectSet(a.client.Scheme(), objs...)
+	if err != nil {
+		return err
+	}
+	return a.apply(os)
 }
 
 // WithPruneGVKs uses a known listing of existing gvks to modify the the prune types to allow for deletion of objects
