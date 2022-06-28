@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	LabelApplied = "objectset.rio.cattle.io/applied"
+	LabelApplied = "apply.acorn.io/applied"
 )
 
 var (

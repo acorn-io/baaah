@@ -204,7 +204,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 				if existingObj.GetLabels()[LabelHash] != "" {
 					return fmt.Errorf("failed to update existing owned object %s %s for %s: %w", k, gvk, debugID, err)
 				}
-				if should(obj, LabelUpdate) {
+				if should(obj, AnnotationUpdate) {
 					toUpdate = append(toUpdate, k)
 				}
 				existing[k] = existingObj
@@ -230,7 +230,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	updateF := func(k objectset.ObjectKey) error {
 		err := a.compareObjects(gvk, debugID, existing[k], objs[k])
 		if err == ErrReplace {
-			if should(existing[k], LabelPrune) && should(existing[k], LabelCreate) {
+			if should(existing[k], AnnotationPrune) && should(existing[k], AnnotationCreate) {
 				toDelete = append(toDelete, k)
 				toCreate = append(toCreate, k)
 			}
@@ -307,17 +307,17 @@ func (a *apply) listBySelector(gvk schema.GroupVersionKind, selector labels.Sele
 }
 
 func should(obj kclient.Object, label string) bool {
-	return obj.GetLabels()[label] != "false"
+	return obj.GetAnnotations()[label] != "false"
 }
 
 func compareSets(existingSet, newSet objectset.ObjectByKey) (toCreate, toDelete, toUpdate []objectset.ObjectKey) {
 	for k, obj := range newSet {
 		if _, ok := existingSet[k]; ok {
-			if should(obj, LabelCreate) {
+			if should(obj, AnnotationCreate) {
 				toUpdate = append(toUpdate, k)
 			}
 		} else {
-			if should(obj, LabelUpdate) {
+			if should(obj, AnnotationUpdate) {
 				toCreate = append(toCreate, k)
 			}
 		}
@@ -325,7 +325,7 @@ func compareSets(existingSet, newSet objectset.ObjectByKey) (toCreate, toDelete,
 
 	for k, obj := range existingSet {
 		if _, ok := newSet[k]; !ok {
-			if should(obj, LabelPrune) {
+			if should(obj, AnnotationPrune) {
 				toDelete = append(toDelete, k)
 			}
 		}

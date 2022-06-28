@@ -25,9 +25,9 @@ const (
 	LabelNamespace  = LabelPrefix + "owner-namespace"
 	LabelHash       = LabelPrefix + "hash"
 
-	LabelPrune  = LabelPrefix + "prune"
-	LabelCreate = LabelPrefix + "create"
-	LabelUpdate = LabelPrefix + "update"
+	AnnotationPrune  = LabelPrefix + "prune"
+	AnnotationCreate = LabelPrefix + "create"
+	AnnotationUpdate = LabelPrefix + "update"
 )
 
 var (
