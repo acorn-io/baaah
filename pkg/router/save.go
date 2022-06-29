@@ -46,7 +46,11 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 
 func statusField(obj runtime.Object) interface{} {
 	v := reflect.ValueOf(obj).Elem()
-	return v.FieldByName("Status").Interface()
+	fieldValue := v.FieldByName("Status")
+	if fieldValue.Kind() == reflect.Invalid {
+		return nil
+	}
+	return fieldValue.Interface()
 }
 
 func statusChanged(unmodified, newObj runtime.Object) bool {

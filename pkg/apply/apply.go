@@ -17,8 +17,8 @@ type Apply interface {
 	WithNamespace(ns string) Apply
 	WithPruneGVKs(gvks ...schema.GroupVersionKind) Apply
 
-	FindOwner(obj kclient.Object) (kclient.Object, error)
-	PurgeOrphan(obj kclient.Object) error
+	FindOwner(ctx context.Context, obj kclient.Object) (kclient.Object, error)
+	PurgeOrphan(ctx context.Context, obj kclient.Object) error
 }
 
 func New(c kclient.Client) Apply {

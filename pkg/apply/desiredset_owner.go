@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -25,10 +26,12 @@ func getGVK(gvkLabel string, gvk *schema.GroupVersionKind) error {
 	return nil
 }
 
-func (a apply) FindOwner(obj kclient.Object) (kclient.Object, error) {
+func (a apply) FindOwner(ctx context.Context, obj kclient.Object) (kclient.Object, error) {
 	if obj == nil {
 		return nil, ErrOwnerNotFound
 	}
+
+	a.ctx = ctx
 
 	var (
 		gvkLabel  = obj.GetAnnotations()[LabelGVK]
@@ -48,12 +51,14 @@ func (a apply) FindOwner(obj kclient.Object) (kclient.Object, error) {
 	return a.get(gvk, namespace, name)
 }
 
-func (a apply) PurgeOrphan(obj kclient.Object) error {
+func (a apply) PurgeOrphan(ctx context.Context, obj kclient.Object) error {
 	if obj == nil {
 		return nil
 	}
 
-	if _, err := a.FindOwner(obj); apierrors.IsNotFound(err) {
+	a.ctx = ctx
+
+	if _, err := a.FindOwner(ctx, obj); apierrors.IsNotFound(err) {
 		gvk, err := apiutil.GVKForObject(obj, a.client.Scheme())
 		if err != nil {
 			return err
