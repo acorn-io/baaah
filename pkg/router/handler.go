@@ -123,10 +123,9 @@ func (m *HandlerSet) newRequestResponse(gvk schema.GroupVersionKind, key string,
 		FromTrigger: trigger,
 		Client: &client{
 			reader: reader{
-				scheme:           m.scheme,
-				client:           m.backend,
-				defaultNamespace: ns,
-				registry:         triggerRegistry,
+				scheme:   m.scheme,
+				client:   m.backend,
+				registry: triggerRegistry,
 			},
 			writer: writer{
 				client:   m.backend,
