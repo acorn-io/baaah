@@ -105,17 +105,12 @@ func (s *statusClient) Patch(ctx context.Context, obj kclient.Object, patch kcli
 }
 
 type reader struct {
-	scheme           *runtime.Scheme
-	client           kclient.Client
-	defaultNamespace string
-	registry         TriggerRegistry
+	scheme   *runtime.Scheme
+	client   kclient.Client
+	registry TriggerRegistry
 }
 
 func (a *reader) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object) error {
-	if key.Namespace == "" {
-		key.Namespace = a.defaultNamespace
-	}
-
 	if err := a.registry.Watch(obj, key.Namespace, key.Name, nil); err != nil {
 		return err
 	}
@@ -127,10 +122,6 @@ func (a *reader) List(ctx context.Context, list kclient.ObjectList, opts ...kcli
 	listOpt := &kclient.ListOptions{}
 	for _, opt := range opts {
 		opt.ApplyToList(listOpt)
-	}
-
-	if listOpt.Namespace == "" {
-		listOpt.Namespace = a.defaultNamespace
 	}
 
 	if err := a.registry.Watch(list, listOpt.Namespace, "", listOpt.LabelSelector); err != nil {
