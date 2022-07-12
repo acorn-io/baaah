@@ -3,6 +3,8 @@ package lasso
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/acorn-io/baaah/pkg/backend"
 	"github.com/acorn-io/baaah/pkg/router"
@@ -46,12 +48,21 @@ func (b *Backend) Start(ctx context.Context) error {
 	return nil
 }
 
-func (b *Backend) Trigger(gvk schema.GroupVersionKind, key string) error {
+func (b *Backend) Trigger(gvk schema.GroupVersionKind, key string, delay time.Duration) error {
 	controller, err := b.cacheFactory.ForKind(gvk)
 	if err != nil {
 		return err
 	}
-	controller.EnqueueKey(router.TriggerPrefix + key)
+	if delay > 0 {
+		ns, name, ok := strings.Cut(key, "/")
+		if ok {
+			controller.EnqueueAfter(ns, name, delay)
+		} else {
+			controller.EnqueueAfter("", key, delay)
+		}
+	} else {
+		controller.EnqueueKey(router.TriggerPrefix + key)
+	}
 	return nil
 }
 
