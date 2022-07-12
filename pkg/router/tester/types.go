@@ -20,10 +20,9 @@ import (
 )
 
 type Client struct {
-	DefaultNamespace string
-	Objects          []kclient.Object
-	SchemeObj        *runtime.Scheme
-	Created          []kclient.Object
+	Objects   []kclient.Object
+	SchemeObj *runtime.Scheme
+	Created   []kclient.Object
 }
 
 func (c Client) objects() []kclient.Object {
@@ -32,7 +31,7 @@ func (c Client) objects() []kclient.Object {
 
 func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, out kclient.Object) error {
 	t := reflect.TypeOf(out)
-	ns := c.DefaultNamespace
+	var ns string
 	if key.Namespace != "" {
 		ns = key.Namespace
 	}
@@ -77,7 +76,7 @@ func (c *Client) List(ctx context.Context, objList kclient.ObjectList, opts ...k
 	}
 	obj := genericObj.(kclient.Object)
 	t := reflect.TypeOf(obj)
-	ns := c.DefaultNamespace
+	var ns string
 	if listOpts.Namespace != "" {
 		ns = listOpts.Namespace
 	}

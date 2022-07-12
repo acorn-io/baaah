@@ -143,9 +143,8 @@ func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, exis
 
 	return router.Request{
 		Client: &Client{
-			DefaultNamespace: input.GetNamespace(),
-			Objects:          existing,
-			SchemeObj:        scheme,
+			Objects:   existing,
+			SchemeObj: scheme,
 		},
 		Object:      input,
 		Ctx:         context.TODO(),
