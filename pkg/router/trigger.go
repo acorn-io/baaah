@@ -36,7 +36,7 @@ func (m *triggers) invokeTriggers(req Request) {
 	for enqueueTarget, matchers := range m.matchers[req.GVK] {
 		for _, matcher := range matchers {
 			if matcher.Match(req.GVK, req.Namespace, req.Name, req.Object) {
-				m.trigger.Trigger(enqueueTarget.gvk, enqueueTarget.key)
+				_ = m.trigger.Trigger(enqueueTarget.gvk, enqueueTarget.key, 0)
 				break
 			}
 		}

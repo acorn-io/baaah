@@ -225,11 +225,20 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	}
 
 	if handles {
-		newObj, err := m.save.save(unmodifiedObject, req, resp, maps.Keys(m.watching))
+		m.watchingLock.Lock()
+		keys := maps.Keys(m.watching)
+		m.watchingLock.Unlock()
+		newObj, err := m.save.save(unmodifiedObject, req, resp, keys)
 		if err != nil {
 			return nil, err
 		}
 		req.Object = newObj
+
+		if resp.delay > 0 {
+			if err := m.backend.Trigger(gvk, key, resp.delay); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return req.Object, nil
