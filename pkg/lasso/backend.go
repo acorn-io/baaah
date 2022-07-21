@@ -13,21 +13,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kcache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 type Backend struct {
-	client.Client
+	*cacheClient
 
 	cacheFactory controller.SharedControllerFactory
 	cache        cache.Cache
 	started      bool
 }
 
-func NewBackend(cacheFactory controller.SharedControllerFactory, client client.Client, cache cache.Cache) *Backend {
+func newBackend(cacheFactory controller.SharedControllerFactory, client *cacheClient, cache cache.Cache) *Backend {
 	return &Backend{
-		Client:       client,
+		cacheClient:  client,
 		cacheFactory: cacheFactory,
 		cache:        cache,
 	}
@@ -45,6 +44,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	if !b.cache.WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
+	b.cacheClient.startPurge(ctx)
 	return nil
 }
 

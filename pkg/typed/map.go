@@ -38,6 +38,13 @@ type Entry[K, V any] struct {
 	Value V
 }
 
+func SortedValues[K constraints.Ordered, V any](data map[K]V) (result []V) {
+	for _, entry := range Sorted(data) {
+		result = append(result, entry.Value)
+	}
+	return
+}
+
 func Sorted[K constraints.Ordered, V any](data map[K]V) []Entry[K, V] {
 	var result []Entry[K, V]
 	for _, key := range SortedKeys(data) {
