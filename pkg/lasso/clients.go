@@ -14,7 +14,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/cluster"
 )
 
 type Runtime struct {
@@ -51,11 +50,22 @@ func NewRuntime(cfg *rest.Config, scheme *runtime.Scheme) (*Runtime, error) {
 		return nil, err
 	}
 
-	client, err := cluster.DefaultNewClient(cache, cfg, client.Options{
+	uncachedClient, err := client.New(cfg, client.Options{
 		Scheme: scheme,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	cachedClient, err := client.NewDelegatingClient(client.NewDelegatingClientInput{
+		CacheReader: cache,
+		Client:      uncachedClient,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &Runtime{
-		Backend: NewBackend(factory, client, cache),
+		Backend: newBackend(factory, newCacheClient(uncachedClient, cachedClient), cache),
 	}, nil
 }

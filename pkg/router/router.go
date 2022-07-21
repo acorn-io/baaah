@@ -113,7 +113,7 @@ type IgnoreRemoveHandler struct {
 }
 
 func (i IgnoreRemoveHandler) Handle(req Request, resp Response) error {
-	if req.Object == nil {
+	if req.Object == nil || !req.Object.GetDeletionTimestamp().IsZero() {
 		return nil
 	}
 	return i.Next.Handle(req, resp)

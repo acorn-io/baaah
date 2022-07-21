@@ -176,25 +176,30 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 	if strings.HasPrefix(key, TriggerPrefix) {
 		fromTrigger = true
 		key = strings.TrimPrefix(key, TriggerPrefix)
-
-		obj, err := m.scheme.New(gvk)
-		if err != nil {
-			return nil, err
-		}
-
-		ns, name, ok := strings.Cut(key, "/")
-		if !ok {
-			name = key
-			ns = ""
-		}
-
-		err = m.backend.Get(m.ctx, kclient.ObjectKey{Name: name, Namespace: ns}, obj.(kclient.Object))
-		if err == nil {
-			runtimeObject = obj
-		} else if err != nil && !apierror.IsNotFound(err) {
-			return nil, err
-		}
 	}
+
+	obj, err := m.scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+
+	ns, name, ok := strings.Cut(key, "/")
+	if !ok {
+		name = key
+		ns = ""
+	}
+
+	lockKey := gvk.Kind + " " + key
+	m.locker.Lock(lockKey)
+	defer func() { _ = m.locker.Unlock(lockKey) }()
+
+	err = m.backend.Get(m.ctx, kclient.ObjectKey{Name: name, Namespace: ns}, obj.(kclient.Object))
+	if err == nil {
+		runtimeObject = obj
+	} else if err != nil && !apierror.IsNotFound(err) {
+		return nil, err
+	}
+
 	return m.handle(gvk, key, runtimeObject, fromTrigger)
 }
 
@@ -203,9 +208,6 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	if err != nil {
 		return nil, err
 	}
-
-	m.locker.Lock(req.GVK.Kind + req.Key)
-	defer m.locker.Unlock(req.GVK.Kind + req.Key)
 
 	if req.FromTrigger {
 		logrus.Infof("Trigger %s/%s %v", req.Namespace, req.Name, req.GVK)
