@@ -23,6 +23,7 @@ func New(handlerSet *HandlerSet) *Router {
 
 type RouteBuilder struct {
 	includeRemove bool
+	finalizeID    string
 	router        *Router
 	objType       kclient.Object
 	name          string
@@ -56,6 +57,16 @@ func (r RouteBuilder) IncludeRemoved() RouteBuilder {
 	return r
 }
 
+func (r RouteBuilder) Finalize(finalizerID string, h Handler) {
+	r.finalizeID = finalizerID
+	r.Handler(h)
+}
+
+func (r RouteBuilder) FinalizeFunc(finalizerID string, h HandlerFunc) {
+	r.finalizeID = finalizerID
+	r.Handler(h)
+}
+
 func (r RouteBuilder) Type(objType kclient.Object) RouteBuilder {
 	r.objType = objType
 	return r
@@ -67,6 +78,12 @@ func (r RouteBuilder) HandlerFunc(h HandlerFunc) {
 
 func (r RouteBuilder) Handler(h Handler) {
 	result := h
+	if r.finalizeID != "" {
+		result = FinalizerHandler{
+			FinalizerID: r.finalizeID,
+			Next:        result,
+		}
+	}
 	for i := len(r.middleware) - 1; i >= 0; i-- {
 		result = r.middleware[i](result)
 	}
@@ -83,7 +100,7 @@ func (r RouteBuilder) Handler(h Handler) {
 			Selector: r.sel,
 		}
 	}
-	if !r.includeRemove {
+	if !r.includeRemove && r.finalizeID == "" {
 		result = IgnoreRemoveHandler{
 			Next: result,
 		}
