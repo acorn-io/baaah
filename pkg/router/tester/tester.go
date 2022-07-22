@@ -143,7 +143,7 @@ func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, exis
 
 	return router.Request{
 		Client: &Client{
-			Objects:   existing,
+			Objects:   append(existing, input.DeepCopyObject().(kclient.Object)),
 			SchemeObj: scheme,
 		},
 		Object:      input,

@@ -9,6 +9,7 @@ import (
 
 	"github.com/acorn-io/baaah/pkg/randomtoken"
 	"github.com/google/uuid"
+	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta2 "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
@@ -23,10 +24,11 @@ type Client struct {
 	Objects   []kclient.Object
 	SchemeObj *runtime.Scheme
 	Created   []kclient.Object
+	Updated   []kclient.Object
 }
 
 func (c Client) objects() []kclient.Object {
-	return append(c.Objects, c.Created...)
+	return append(append(c.Objects, c.Created...), c.Updated...)
 }
 
 func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, out kclient.Object) error {
@@ -35,7 +37,12 @@ func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, out kclient.Obj
 	if key.Namespace != "" {
 		ns = key.Namespace
 	}
-	for _, obj := range c.objects() {
+
+	// iterate over the slice in reverse because updated objects are at the end. created objects are before them.
+	// in the scenario where an object has been created and then updated, or updated twice, we want the last object in
+	objs := c.objects()
+	for i := len(objs) - 1; i >= 0; i-- {
+		obj := objs[i]
 		if reflect.TypeOf(obj) != t {
 			continue
 		}
@@ -80,30 +87,29 @@ func (c *Client) List(ctx context.Context, objList kclient.ObjectList, opts ...k
 	if listOpts.Namespace != "" {
 		ns = listOpts.Namespace
 	}
-	var resultObjs []runtime.Object
+
+	// put objects into a map because c.objects() returns both created and updated objects, with updates coming after
+	// created. this will ensure the last object in is what is returned
+	resultObjs := make(map[string]runtime.Object)
 	for _, testObj := range c.objects() {
 		if testObj.GetNamespace() != ns {
 			continue
 		}
-		if reflect.TypeOf(obj) != t {
+		if reflect.TypeOf(testObj) != t {
 			continue
 		}
 		if opts != nil && listOpts.LabelSelector != nil && !listOpts.LabelSelector.Matches(labels.Set(testObj.GetLabels())) {
 			continue
 		}
 		copy(obj, testObj)
-		if err != nil {
-			return err
-		}
-
-		resultObjs = append(resultObjs, testObj)
+		resultObjs[testObj.GetNamespace()+"/"+testObj.GetName()] = testObj
 		newObj, err := c.SchemeObj.New(gvk)
 		if err != nil {
 			return err
 		}
 		obj = newObj.(kclient.Object)
 	}
-	return meta2.SetList(objList, resultObjs)
+	return meta2.SetList(objList, maps.Values(resultObjs))
 }
 
 func (c *Client) Create(ctx context.Context, obj kclient.Object, opts ...kclient.CreateOption) error {
@@ -117,6 +123,25 @@ func (c *Client) Create(ctx context.Context, obj kclient.Object, opts ...kclient
 	}
 	c.Created = append(c.Created, obj)
 	return nil
+}
+
+func (c *Client) Update(ctx context.Context, o kclient.Object, opts ...kclient.UpdateOption) error {
+	t := reflect.TypeOf(o)
+
+	for _, obj := range c.objects() {
+		if reflect.TypeOf(obj) != t {
+			continue
+		}
+		if obj.GetName() == o.GetName() && obj.GetNamespace() == o.GetNamespace() {
+			c.Updated = append(c.Updated, o)
+			return nil
+		}
+	}
+
+	return errors.NewNotFound(schema.GroupResource{
+		Group:    fmt.Sprintf("Unknown group from test: %T", o),
+		Resource: fmt.Sprintf("Unknown resource from test: %T", o),
+	}, o.GetName())
 }
 
 type Response struct {
@@ -135,36 +160,31 @@ func (r *Response) Objects(obj ...kclient.Object) {
 	r.Collected = append(r.Collected, obj...)
 }
 
-func (c Client) Delete(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteOption) error {
+func (c *Client) Delete(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteOption) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c Client) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
+func (c *Client) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c Client) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
+func (c *Client) DeleteAllOf(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteAllOfOption) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c Client) DeleteAllOf(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteAllOfOption) error {
+func (c *Client) Status() kclient.StatusWriter {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c Client) Status() kclient.StatusWriter {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (c Client) Scheme() *runtime.Scheme {
+func (c *Client) Scheme() *runtime.Scheme {
 	return c.SchemeObj
 }
 
-func (c Client) RESTMapper() meta2.RESTMapper {
+func (c *Client) RESTMapper() meta2.RESTMapper {
 	//TODO implement me
 	panic("implement me")
 }
