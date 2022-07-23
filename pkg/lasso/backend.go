@@ -8,6 +8,7 @@ import (
 
 	"github.com/acorn-io/baaah/pkg/backend"
 	"github.com/acorn-io/baaah/pkg/router"
+	"github.com/acorn-io/baaah/pkg/uncached"
 	"github.com/rancher/lasso/pkg/controller"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -79,7 +80,7 @@ func (b *Backend) Watch(ctx context.Context, gvk schema.GroupVersionKind, name s
 }
 
 func (b *Backend) GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error) {
-	return apiutil.GVKForObject(obj, scheme)
+	return apiutil.GVKForObject(uncached.Unwrap(obj), scheme)
 }
 
 func (b *Backend) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (kcache.SharedIndexInformer, error) {
