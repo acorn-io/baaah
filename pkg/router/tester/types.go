@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/acorn-io/baaah/pkg/randomtoken"
+	"github.com/acorn-io/baaah/pkg/uncached"
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +33,9 @@ func (c Client) objects() []kclient.Object {
 }
 
 func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, out kclient.Object) error {
+	if u, ok := out.(*uncached.Holder); ok {
+		out = u.Object
+	}
 	t := reflect.TypeOf(out)
 	var ns string
 	if key.Namespace != "" {
@@ -64,6 +68,10 @@ func copy(dest, src kclient.Object) {
 }
 
 func (c *Client) List(ctx context.Context, objList kclient.ObjectList, opts ...kclient.ListOption) error {
+	if u, ok := objList.(*uncached.HolderList); ok {
+		objList = u.ObjectList
+	}
+
 	listOpts := &kclient.ListOptions{}
 	for _, opt := range opts {
 		opt.ApplyToList(listOpts)
