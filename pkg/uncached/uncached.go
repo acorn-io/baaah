@@ -17,6 +17,25 @@ func Get(obj kclient.Object) kclient.Object {
 	}
 }
 
+func Unwrap(obj runtime.Object) runtime.Object {
+	if h, ok := obj.(*Holder); ok {
+		return h.Object
+	}
+	if h, ok := obj.(*HolderList); ok {
+		return h.ObjectList
+	}
+	return obj
+}
+
+func UnwrapList(obj kclient.ObjectList) kclient.ObjectList {
+	if h, ok := obj.(*HolderList); ok {
+		if _, ok := h.ObjectList.(kclient.ObjectList); ok {
+			return h.ObjectList
+		}
+	}
+	return obj
+}
+
 type Holder struct {
 	kclient.Object
 }
