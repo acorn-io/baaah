@@ -30,6 +30,7 @@ type HandlerSet struct {
 	handlers handlers
 	triggers triggers
 	save     save
+	onError  ErrorHandler
 
 	watchingLock sync.Mutex
 	watching     map[schema.GroupVersionKind]bool
@@ -203,6 +204,13 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 	return m.handle(gvk, key, runtimeObject, fromTrigger)
 }
 
+func (m *HandlerSet) handleError(req Request, resp Response, err error) error {
+	if m.onError != nil {
+		return m.onError(req, resp, err)
+	}
+	return err
+}
+
 func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedObject runtime.Object, trigger bool) (runtime.Object, error) {
 	req, resp, err := m.newRequestResponse(gvk, key, unmodifiedObject, trigger)
 	if err != nil {
@@ -218,12 +226,16 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	handles := m.handlers.Handles(req)
 	if handles {
 		if err := m.handlers.Handle(req, resp); err != nil {
-			return nil, err
+			if err := m.handleError(req, resp, err); err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	if err := m.triggers.Trigger(req, resp); err != nil {
-		return nil, err
+		if err := m.handleError(req, resp, err); err != nil {
+			return nil, err
+		}
 	}
 
 	if handles {
@@ -232,7 +244,9 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 		m.watchingLock.Unlock()
 		newObj, err := m.save.save(unmodifiedObject, req, resp, keys)
 		if err != nil {
-			return nil, err
+			if err := m.handleError(req, resp, err); err != nil {
+				return nil, err
+			}
 		}
 		req.Object = newObj
 

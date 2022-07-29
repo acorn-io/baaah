@@ -10,7 +10,8 @@ import (
 type Router struct {
 	RouteBuilder
 
-	handlers *HandlerSet
+	OnErrorHandler ErrorHandler
+	handlers       *HandlerSet
 }
 
 func New(handlerSet *HandlerSet) *Router {
@@ -93,6 +94,7 @@ func (r RouteBuilder) Handler(h Handler) {
 }
 
 func (r *Router) Start(ctx context.Context) error {
+	r.handlers.onError = r.OnErrorHandler
 	return r.handlers.Start(ctx)
 }
 

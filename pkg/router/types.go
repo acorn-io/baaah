@@ -19,6 +19,12 @@ type Middleware func(h Handler) Handler
 
 type HandlerFunc func(req Request, resp Response) error
 
+// ErrorHandler is a user defined function to handle an error. If the
+// ErrorHandler returns nil this req is considered handled and will not
+// be re-enqueued.  If a non-nil resp is return this key will be
+// re-enqueued.
+type ErrorHandler func(req Request, resp Response, err error) error
+
 func (h HandlerFunc) Handle(req Request, resp Response) error {
 	return h(req, resp)
 }

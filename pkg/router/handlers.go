@@ -48,19 +48,18 @@ func (h *handlers) Handle(req Request, resp *response) error {
 
 	for _, h := range handlers {
 		err := h.Handle(req, resp)
-		if err == nil {
-			newObjects := make([]kclient.Object, 0, len(resp.objects))
-			for _, obj := range resp.objects {
-				if isObjectForRequest(req, obj) {
-					req.Object = obj
-				} else {
-					newObjects = append(newObjects, obj)
-				}
-			}
-			resp.objects = newObjects
-		} else {
+		if err != nil {
 			errs = append(errs, err)
 		}
+		newObjects := make([]kclient.Object, 0, len(resp.objects))
+		for _, obj := range resp.objects {
+			if isObjectForRequest(req, obj) {
+				req.Object = obj
+			} else {
+				newObjects = append(newObjects, obj)
+			}
+		}
+		resp.objects = newObjects
 	}
 	return merr.NewErrors(errs...)
 }

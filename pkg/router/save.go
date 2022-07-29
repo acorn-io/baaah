@@ -1,8 +1,6 @@
 package router
 
 import (
-	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/acorn-io/baaah/pkg/apply"
@@ -11,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	kcache "k8s.io/client-go/tools/cache"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,7 +34,7 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 	}
 
 	newObj := req.Object
-	if newObj != nil && statusChanged(unmodified, newObj) {
+	if newObj != nil && StatusChanged(unmodified, newObj) {
 		return newObj, s.client.Status().Update(req.Ctx, newObj)
 	}
 
@@ -53,22 +50,6 @@ func statusField(obj runtime.Object) interface{} {
 	return fieldValue.Interface()
 }
 
-func statusChanged(unmodified, newObj runtime.Object) bool {
+func StatusChanged(unmodified, newObj runtime.Object) bool {
 	return !equality.Semantic.DeepEqual(statusField(unmodified), statusField(newObj))
-}
-
-type saveInformerFactory struct {
-	ctx   context.Context
-	cache backend.CacheFactory
-}
-
-func (s saveInformerFactory) Get(gvk schema.GroupVersionKind, gvr schema.GroupVersionResource) (kcache.SharedIndexInformer, error) {
-	inf, err := s.cache.GetInformerForKind(s.ctx, gvk)
-	if err != nil {
-		return nil, err
-	}
-	if si, ok := inf.(kcache.SharedIndexInformer); ok {
-		return si, nil
-	}
-	return nil, fmt.Errorf("informer of type %T is not a cache.SharedIndexInformer", inf)
 }
