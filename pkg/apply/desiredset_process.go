@@ -325,7 +325,7 @@ func compareSets(existingSet, newSet objectset.ObjectByKey) (toCreate, toDelete,
 
 	for k, obj := range existingSet {
 		if _, ok := newSet[k]; !ok {
-			if should(obj, AnnotationPrune) && !obj.GetDeletionTimestamp().IsZero() {
+			if should(obj, AnnotationPrune) && obj.GetDeletionTimestamp().IsZero() {
 				toDelete = append(toDelete, k)
 			}
 		}
