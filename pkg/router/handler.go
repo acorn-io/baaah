@@ -257,7 +257,7 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 		}
 	}
 
-	return req.Object, nil
+	return req.Object, m.handleError(req, resp, err)
 }
 
 type response struct {
