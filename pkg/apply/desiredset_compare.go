@@ -3,10 +3,13 @@ package apply
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 
 	"github.com/acorn-io/baaah/pkg/data"
@@ -40,13 +43,15 @@ var (
 	}
 )
 
-func prepareObjectForCreate(gvk schema.GroupVersionKind, obj kclient.Object) (kclient.Object, error) {
+func prepareObjectForCreate(gvk schema.GroupVersionKind, obj kclient.Object, clone bool) (kclient.Object, error) {
 	serialized, err := serializeApplied(obj)
 	if err != nil {
 		return nil, err
 	}
 
-	obj = obj.DeepCopyObject().(kclient.Object)
+	if clone {
+		obj = obj.DeepCopyObject().(kclient.Object)
+	}
 	m, err := meta.Accessor(obj)
 	if err != nil {
 		return nil, err
@@ -77,7 +82,7 @@ func originalAndModified(gvk schema.GroupVersionKind, oldMetadata v1.Object, new
 		return nil, nil, err
 	}
 
-	newObject, err = prepareObjectForCreate(gvk, newObject)
+	newObject, err = prepareObjectForCreate(gvk, newObject, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -137,7 +142,7 @@ func sanitizePatch(patch []byte, removeObjectSetAnnotation bool) ([]byte, error)
 		delete(data, "status")
 	}
 
-	if deleted := removeCreationTimestamp(data); deleted {
+	if deleted := removeMetadataFields(data); deleted {
 		mod = true
 	}
 
@@ -201,7 +206,7 @@ func (a *apply) applyPatch(gvk schema.GroupVersionKind, debugID string, oldObjec
 	logrus.Debugf("DesiredSet - Patch %s %s/%s for %s -- [PATCH:%s, ORIGINAL:%s, MODIFIED:%s, CURRENT:%s]", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patch, original, modified, current)
 	reconciler := a.reconcilers[gvk]
 	if reconciler != nil {
-		newObject, err := prepareObjectForCreate(gvk, newObject)
+		newObject, err := prepareObjectForCreate(gvk, newObject, true)
 		if err != nil {
 			return false, err
 		}
@@ -222,11 +227,16 @@ func (a *apply) applyPatch(gvk schema.GroupVersionKind, debugID string, oldObjec
 	}
 
 	ustr := &unstructured.Unstructured{}
+	ustr.SetResourceVersion(oldObject.GetResourceVersion())
 	ustr.SetGroupVersionKind(gvk)
 	ustr.SetNamespace(oldObject.GetNamespace())
 	ustr.SetName(oldObject.GetName())
 
 	logrus.Debugf("DesiredSet - Updated %s %s/%s for %s -- %s %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patchType, patch)
+	if a.ensure {
+		newObject.SetResourceVersion(oldObject.GetResourceVersion())
+		return true, a.client.Patch(a.ctx, newObject, kclient.RawPatch(patchType, patch))
+	}
 	return true, a.client.Patch(a.ctx, ustr, kclient.RawPatch(patchType, patch))
 }
 
@@ -234,25 +244,52 @@ func (a *apply) compareObjects(gvk schema.GroupVersionKind, debugID string, oldO
 	if ran, err := a.applyPatch(gvk, debugID, oldObject, newObject); err != nil {
 		return err
 	} else if !ran {
+		if a.ensure {
+			srcObject := oldObject.DeepCopyObject()
+			dstVal := reflect.ValueOf(newObject)
+			srcVal := reflect.ValueOf(srcObject)
+			if !srcVal.Type().AssignableTo(dstVal.Type()) {
+				return fmt.Errorf("type %s not assignable to %s", srcVal.Type(), dstVal.Type())
+			}
+			reflect.Indirect(dstVal).Set(reflect.Indirect(srcVal))
+		}
 		logrus.Debugf("DesiredSet - No change(2) %s %s/%s for %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID)
 	}
 
 	return nil
 }
 
-func removeCreationTimestamp(data map[string]interface{}) bool {
+func removeManagedFields(data map[string]interface{}) bool {
 	metadata, ok := data["metadata"]
 	if !ok {
 		return false
 	}
 
 	data, _ = metadata.(map[string]interface{})
-	if _, ok := data["creationTimestamp"]; ok {
-		delete(data, "creationTimestamp")
+	if _, ok := data["managedFields"]; ok {
+		delete(data, "managedFields")
 		return true
 	}
 
 	return false
+}
+
+func removeMetadataFields(data map[string]interface{}) bool {
+	metadata, ok := data["metadata"]
+	if !ok {
+		return false
+	}
+
+	mod := false
+	data, _ = metadata.(map[string]interface{})
+	for _, key := range []string{"creationTimestamp", "generation", "resourceVersion", "uid", "managedFields"} {
+		if _, ok := data[key]; ok {
+			delete(data, key)
+			mod = true
+		}
+	}
+
+	return mod
 }
 
 func getOriginalObject(gvk schema.GroupVersionKind, obj v1.Object) (kclient.Object, error) {
@@ -267,10 +304,10 @@ func getOriginalObject(gvk schema.GroupVersionKind, obj v1.Object) (kclient.Obje
 		return nil, err
 	}
 
-	removeCreationTimestamp(mapObj)
+	removeMetadataFields(mapObj)
 	return prepareObjectForCreate(gvk, &unstructured.Unstructured{
 		Object: mapObj,
-	})
+	}, true)
 }
 
 func getOriginalBytes(gvk schema.GroupVersionKind, obj v1.Object) ([]byte, error) {
@@ -337,7 +374,8 @@ func pruneValues(data map[string]interface{}, isList bool) map[string]interface{
 				switch x := v.(type) {
 				case string:
 					if len(x) > 64 {
-						result[k] = x[:64]
+						sum := sha256.Sum256([]byte(x))
+						result[k] = x[:64] + hex.EncodeToString(sum[:])[:8]
 					} else {
 						result[k] = v
 					}

@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	apierror "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -89,8 +90,8 @@ func (t *triggerRegistry) WatchingGVKs() []schema.GroupVersionKind {
 	return maps.Keys(t.gvks)
 
 }
-func (t *triggerRegistry) Watch(obj runtime.Object, namespace, name string, sel labels.Selector) error {
-	gvk, err := t.trigger.Register(t.gvk, t.key, obj, namespace, name, sel)
+func (t *triggerRegistry) Watch(obj runtime.Object, namespace, name string, sel labels.Selector, fields fields.Selector) error {
+	gvk, err := t.trigger.Register(t.gvk, t.key, obj, namespace, name, sel, fields)
 	if err != nil {
 		return err
 	}
@@ -274,7 +275,7 @@ func (r *response) RetryAfter(delay time.Duration) {
 
 func (r *response) Objects(objs ...kclient.Object) {
 	for _, obj := range objs {
-		r.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil)
+		r.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil)
 		r.objects = append(r.objects, obj)
 	}
 }

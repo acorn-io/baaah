@@ -145,10 +145,14 @@ func (a *apply) injectLabelsAndAnnotations(in *objectset.ObjectSet, labels, anno
 
 	for _, objMap := range in.ObjectsByGVK() {
 		for _, obj := range objMap {
-			obj = obj.DeepCopyObject().(kclient.Object)
+			if !a.ensure {
+				obj = obj.DeepCopyObject().(kclient.Object)
+			}
 			setLabels(obj, labels)
 			setAnnotations(obj, annotations)
-			result.Add(obj)
+			if err := result.Add(obj); err != nil {
+				return nil, err
+			}
 		}
 	}
 

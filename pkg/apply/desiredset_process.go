@@ -191,7 +191,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	toDelete = a.filterCrossVersion(allObjs, gvk, toDelete)
 
 	createF := func(k objectset.ObjectKey) error {
-		obj, err := prepareObjectForCreate(gvk, objs[k])
+		obj, err := prepareObjectForCreate(gvk, objs[k], !a.ensure)
 		if err != nil {
 			return fmt.Errorf("failed to prepare create %s %s for %s: %w", k, gvk, debugID, err)
 		}
@@ -199,7 +199,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		_, err = a.create(obj)
 		if apierrors.IsAlreadyExists(err) {
 			// Taking over an object that wasn't previously managed by us
-			existingObj, getErr := a.get(gvk, k.Namespace, k.Name)
+			existingObj, getErr := a.get(gvk, objs[k].(kclient.Object), k.Namespace, k.Name)
 			if getErr == nil {
 				if existingObj.GetLabels()[LabelHash] != "" {
 					return fmt.Errorf("failed to update existing owned object %s %s for %s: %w", k, gvk, debugID, err)
@@ -223,7 +223,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		if err := a.delete(gvk, k.Namespace, k.Name); err != nil {
 			return fmt.Errorf("failed to delete %s %s for %s: %w", k, gvk, debugID, err)
 		}
-		logrus.Debugf("DesiredSet - Delete %s %s for %s", gvk, k, debugID)
+		logrus.Debugf("DesiredSet - DeleteStrategy %s %s for %s", gvk, k, debugID)
 		return nil
 	}
 
@@ -267,8 +267,8 @@ func (a *apply) list(gvk schema.GroupVersionKind, selector labels.Selector, objs
 	}
 
 	result := map[objectset.ObjectKey]kclient.Object{}
-	for k := range objs {
-		obj, err := a.get(gvk, k.Namespace, k.Name)
+	for k, v := range objs {
+		obj, err := a.get(gvk, v, k.Namespace, k.Name)
 		if apierrors.IsNotFound(err) {
 			continue
 		} else if err != nil {

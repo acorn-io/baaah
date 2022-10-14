@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/acorn-io/baaah/pkg/backend"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,6 +35,10 @@ func (m *triggers) invokeTriggers(req Request) {
 	defer m.lock.RUnlock()
 
 	for enqueueTarget, matchers := range m.matchers[req.GVK] {
+		if enqueueTarget.gvk == req.GVK &&
+			enqueueTarget.key == req.Key {
+			continue
+		}
 		for _, matcher := range matchers {
 			if matcher.Match(req.GVK, req.Namespace, req.Name, req.Object) {
 				_ = m.trigger.Trigger(enqueueTarget.gvk, enqueueTarget.key, 0)
@@ -85,7 +90,7 @@ func (m *triggers) clearMatchers(gvk schema.GroupVersionKind, key string) {
 	}
 }
 
-func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj runtime.Object, namespace, name string, selector labels.Selector) (schema.GroupVersionKind, error) {
+func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj runtime.Object, namespace, name string, selector labels.Selector, fields fields.Selector) (schema.GroupVersionKind, error) {
 	gvk, err := m.gvkLookup.GVKForObject(obj, m.scheme)
 	if err != nil {
 		return gvk, err
@@ -99,6 +104,7 @@ func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj r
 		Namespace: namespace,
 		Name:      name,
 		Selector:  selector,
+		Fields:    fields,
 	})
 
 	return gvk, m.watcher.WatchGVK(gvk)
