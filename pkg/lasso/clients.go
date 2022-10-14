@@ -21,6 +21,10 @@ type Runtime struct {
 }
 
 func NewRuntime(cfg *rest.Config, scheme *runtime.Scheme) (*Runtime, error) {
+	return NewRuntimeForNamespace(cfg, "", scheme)
+}
+
+func NewRuntimeForNamespace(cfg *rest.Config, namespace string, scheme *runtime.Scheme) (*Runtime, error) {
 	cf, err := lclient.NewSharedClientFactory(cfg, &lclient.SharedClientFactoryOptions{
 		Scheme: scheme,
 	})
@@ -28,7 +32,9 @@ func NewRuntime(cfg *rest.Config, scheme *runtime.Scheme) (*Runtime, error) {
 		return nil, err
 	}
 
-	cacheFactory := lcache.NewSharedCachedFactory(cf, nil)
+	cacheFactory := lcache.NewSharedCachedFactory(cf, &lcache.SharedCacheFactoryOptions{
+		DefaultNamespace: namespace,
+	})
 
 	factory := controller.NewSharedControllerFactory(cacheFactory, &controller.SharedControllerFactoryOptions{
 		DefaultRateLimiter: workqueue.NewItemFastSlowRateLimiter(500*time.Millisecond, time.Second, 2),
