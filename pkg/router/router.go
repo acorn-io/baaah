@@ -102,10 +102,6 @@ func (r *Router) Handle(objType kclient.Object, h Handler) {
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 
-func (r *Router) Middleware(objType kclient.Object, h HandlerFunc) {
-	r.RouteBuilder.Type(objType).Handler(h)
-}
-
 func (r *Router) HandleFunc(objType kclient.Object, h HandlerFunc) {
 	r.RouteBuilder.Type(objType).Handler(h)
 }

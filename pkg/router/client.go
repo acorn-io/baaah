@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -11,7 +12,7 @@ import (
 )
 
 type TriggerRegistry interface {
-	Watch(obj runtime.Object, namespace, name string, selector labels.Selector) error
+	Watch(obj runtime.Object, namespace, name string, selector labels.Selector, fields fields.Selector) error
 	WatchingGVKs() []schema.GroupVersionKind
 }
 
@@ -39,35 +40,35 @@ func (w *writer) DeleteAllOf(ctx context.Context, obj kclient.Object, opts ...kc
 	for _, opt := range opts {
 		opt.ApplyToDeleteAllOf(delOpts)
 	}
-	if err := w.registry.Watch(obj, delOpts.Namespace, "", delOpts.LabelSelector); err != nil {
+	if err := w.registry.Watch(obj, delOpts.Namespace, "", delOpts.LabelSelector, delOpts.FieldSelector); err != nil {
 		return err
 	}
 	return w.client.DeleteAllOf(ctx, obj, opts...)
 }
 
 func (w *writer) Delete(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteOption) error {
-	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
 	return w.client.Delete(ctx, obj, opts...)
 }
 
 func (w *writer) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
-	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
 	return w.client.Patch(ctx, obj, patch, opts...)
 }
 
 func (w *writer) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
-	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
 	return w.client.Update(ctx, obj, opts...)
 }
 
 func (w *writer) Create(ctx context.Context, obj kclient.Object, opts ...kclient.CreateOption) error {
-	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+	if err := w.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
 	return w.client.Create(ctx, obj, opts...)
@@ -91,14 +92,14 @@ func (s *status) Status() kclient.StatusWriter {
 }
 
 func (s *statusClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
-	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
 	return s.client.Status().Update(ctx, obj, opts...)
 }
 
 func (s *statusClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
-	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil); err != nil {
+	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
 	return s.client.Status().Patch(ctx, obj, patch, opts...)
@@ -111,7 +112,7 @@ type reader struct {
 }
 
 func (a *reader) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object) error {
-	if err := a.registry.Watch(obj, key.Namespace, key.Name, nil); err != nil {
+	if err := a.registry.Watch(obj, key.Namespace, key.Name, nil, nil); err != nil {
 		return err
 	}
 
@@ -124,7 +125,7 @@ func (a *reader) List(ctx context.Context, list kclient.ObjectList, opts ...kcli
 		opt.ApplyToList(listOpt)
 	}
 
-	if err := a.registry.Watch(list, listOpt.Namespace, "", listOpt.LabelSelector); err != nil {
+	if err := a.registry.Watch(list, listOpt.Namespace, "", listOpt.LabelSelector, listOpt.FieldSelector); err != nil {
 		return err
 	}
 
