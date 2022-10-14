@@ -48,7 +48,7 @@ func (a apply) FindOwner(ctx context.Context, obj kclient.Object) (kclient.Objec
 		return nil, err
 	}
 
-	return a.get(gvk, namespace, name)
+	return a.get(gvk, nil, namespace, name)
 }
 
 func (a apply) PurgeOrphan(ctx context.Context, obj kclient.Object) error {

@@ -20,6 +20,14 @@ type apply struct {
 	reconcilers      map[schema.GroupVersionKind]reconciler
 	ownerSubContext  string
 	owner            kclient.Object
+	ensure           bool
+}
+
+func (a apply) Ensure(ctx context.Context, objs ...kclient.Object) error {
+	a.ensure = true
+	a.owner = nil
+	a.ownerSubContext = ""
+	return a.Apply(ctx, nil, objs...)
 }
 
 func (a apply) Apply(ctx context.Context, owner kclient.Object, objs ...kclient.Object) error {
