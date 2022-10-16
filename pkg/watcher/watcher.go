@@ -102,7 +102,7 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		if lastRevision != "" {
 			revision = lastRevision
 		}
-		logrus.Infof("no error, going to restart watch %T, %T from revision %s", o, cb, revision)
+		logrus.Debugf("no error, going to restart watch %T, %T from revision %s", o, cb, revision)
 		select {
 		case <-ctx.Done():
 			return last, ctx.Err()
