@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -94,7 +95,9 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		if err != nil {
 			logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
 		} else if terminalErr != nil {
-			logrus.Errorf("terminal error while watching type %T %T: %v", o, cb, terminalErr)
+			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) {
+				logrus.Errorf("terminal error while watching type %T %T: %v", o, cb, terminalErr)
+			}
 			return last, terminalErr
 		} else if done {
 			return last, nil
