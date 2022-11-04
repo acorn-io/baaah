@@ -1,5 +1,7 @@
 package typed
 
+import "time"
+
 func Debounce[T any](in <-chan T) <-chan T {
 	result := make(chan T, 1)
 	go func() {
@@ -7,6 +9,31 @@ func Debounce[T any](in <-chan T) <-chan T {
 			select {
 			case result <- msg:
 			default:
+			}
+		}
+	}()
+	return result
+}
+
+func Every[T any](duration time.Duration, in <-chan T) <-chan T {
+	result := make(chan T)
+	go func() {
+		var (
+			lastUpdate T
+			timer      = time.NewTicker(duration)
+		)
+		defer close(result)
+		defer timer.Stop()
+		for {
+			select {
+			case currentUpdate, ok := <-in:
+				if !ok {
+					result <- lastUpdate
+					return
+				}
+				lastUpdate = currentUpdate
+			case <-timer.C:
+				result <- lastUpdate
 			}
 		}
 	}()
