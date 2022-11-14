@@ -17,6 +17,16 @@ func Get(obj kclient.Object) kclient.Object {
 	}
 }
 
+func IsWrapped(obj runtime.Object) bool {
+	if _, ok := obj.(*Holder); ok {
+		return true
+	}
+	if _, ok := obj.(*HolderList); ok {
+		return true
+	}
+	return false
+}
+
 func Unwrap(obj runtime.Object) runtime.Object {
 	if h, ok := obj.(*Holder); ok {
 		return h.Object

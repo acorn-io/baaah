@@ -91,11 +91,13 @@ func (t *triggerRegistry) WatchingGVKs() []schema.GroupVersionKind {
 
 }
 func (t *triggerRegistry) Watch(obj runtime.Object, namespace, name string, sel labels.Selector, fields fields.Selector) error {
-	gvk, err := t.trigger.Register(t.gvk, t.key, obj, namespace, name, sel, fields)
+	gvk, ok, err := t.trigger.Register(t.gvk, t.key, obj, namespace, name, sel, fields)
 	if err != nil {
 		return err
 	}
-	t.gvks[gvk] = true
+	if ok {
+		t.gvks[gvk] = true
+	}
 	return nil
 }
 

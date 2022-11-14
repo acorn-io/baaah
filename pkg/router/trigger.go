@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/uncached"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -90,10 +91,13 @@ func (m *triggers) clearMatchers(gvk schema.GroupVersionKind, key string) {
 	}
 }
 
-func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj runtime.Object, namespace, name string, selector labels.Selector, fields fields.Selector) (schema.GroupVersionKind, error) {
+func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj runtime.Object, namespace, name string, selector labels.Selector, fields fields.Selector) (schema.GroupVersionKind, bool, error) {
+	if uncached.IsWrapped(obj) {
+		return schema.GroupVersionKind{}, false, nil
+	}
 	gvk, err := m.gvkLookup.GVKForObject(obj, m.scheme)
 	if err != nil {
-		return gvk, err
+		return gvk, false, err
 	}
 
 	if _, ok := obj.(kclient.ObjectList); ok {
@@ -107,5 +111,5 @@ func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj r
 		Fields:    fields,
 	})
 
-	return gvk, m.watcher.WatchGVK(gvk)
+	return gvk, true, m.watcher.WatchGVK(gvk)
 }
