@@ -3,6 +3,8 @@ package router
 import (
 	"context"
 
+	"github.com/acorn-io/baaah/pkg/backend"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -22,6 +24,10 @@ func New(handlerSet *HandlerSet) *Router {
 	return r
 }
 
+func (r *Router) Backend() backend.Backend {
+	return r.handlers.backend
+}
+
 type RouteBuilder struct {
 	includeRemove bool
 	finalizeID    string
@@ -31,6 +37,7 @@ type RouteBuilder struct {
 	namespace     string
 	middleware    []Middleware
 	sel           labels.Selector
+	fieldSelector fields.Selector
 }
 
 func (r RouteBuilder) Middleware(m ...Middleware) RouteBuilder {
@@ -45,6 +52,11 @@ func (r RouteBuilder) Namespace(namespace string) RouteBuilder {
 
 func (r RouteBuilder) Selector(sel labels.Selector) RouteBuilder {
 	r.sel = sel
+	return r
+}
+
+func (r RouteBuilder) FieldSelector(sel fields.Selector) RouteBuilder {
+	r.fieldSelector = sel
 	return r
 }
 
@@ -99,6 +111,12 @@ func (r RouteBuilder) Handler(h Handler) {
 		result = SelectorFilter{
 			Next:     result,
 			Selector: r.sel,
+		}
+	}
+	if r.fieldSelector != nil {
+		result = FieldSelectorFilter{
+			Next:          result,
+			FieldSelector: r.fieldSelector,
 		}
 	}
 	if !r.includeRemove && r.finalizeID == "" {
@@ -160,4 +178,19 @@ func (s SelectorFilter) Handle(req Request, resp Response) error {
 		return nil
 	}
 	return s.Next.Handle(req, resp)
+}
+
+type FieldSelectorFilter struct {
+	Next          Handler
+	FieldSelector fields.Selector
+}
+
+func (s FieldSelectorFilter) Handle(req Request, resp Response) error {
+	if req.Object == nil {
+		return nil
+	}
+	if i, ok := req.Object.(fields.Fields); ok && s.FieldSelector.Matches(i) {
+		return s.Next.Handle(req, resp)
+	}
+	return nil
 }
