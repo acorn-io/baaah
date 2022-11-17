@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 
+	"github.com/acorn-io/baaah/pkg/backend"
 	"k8s.io/apimachinery/pkg/labels"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -20,6 +21,10 @@ func New(handlerSet *HandlerSet) *Router {
 	}
 	r.RouteBuilder.router = r
 	return r
+}
+
+func (r *Router) Backend() backend.Backend {
+	return r.handlers.backend
 }
 
 type RouteBuilder struct {
