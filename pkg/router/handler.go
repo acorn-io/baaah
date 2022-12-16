@@ -53,7 +53,7 @@ func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend)
 			scheme:    scheme,
 		},
 		save: save{
-			apply:  apply.New(backend),
+			apply:  apply.New(backend).WithOwnerSubContext(name),
 			cache:  backend,
 			client: backend,
 		},

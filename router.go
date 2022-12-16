@@ -1,9 +1,6 @@
 package baaah
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/acorn-io/baaah/pkg/lasso"
 	"github.com/acorn-io/baaah/pkg/restconfig"
 	"github.com/acorn-io/baaah/pkg/router"
@@ -11,24 +8,19 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func DefaultRouter(scheme *runtime.Scheme) (*router.Router, error) {
+// DefaultRouter The routerName is important as this name will be used to assign ownership of objects
+// created by this router. Specifically the routerName is assigned to the sub-context in the
+// apply actions.
+func DefaultRouter(routerName string, scheme *runtime.Scheme) (*router.Router, error) {
 	cfg, err := restconfig.New(scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewRouter(DefaultHandlerName(), "", cfg, scheme)
-}
-
-func DefaultHandlerName() string {
-	return filepath.Base(os.Args[0])
+	return NewRouter(routerName, "", cfg, scheme)
 }
 
 func NewRouter(handlerName, namespace string, cfg *rest.Config, scheme *runtime.Scheme) (*router.Router, error) {
-	if handlerName == "" {
-		handlerName = DefaultHandlerName()
-	}
-
 	runtime, err := lasso.NewRuntimeForNamespace(cfg, namespace, scheme)
 	if err != nil {
 		return nil, err

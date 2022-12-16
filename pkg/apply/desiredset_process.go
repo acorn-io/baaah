@@ -201,7 +201,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 			// Taking over an object that wasn't previously managed by us
 			existingObj, getErr := a.get(gvk, objs[k].(kclient.Object), k.Namespace, k.Name)
 			if getErr == nil {
-				if existingObj.GetLabels()[LabelHash] != "" {
+				if existingObj.GetLabels()[LabelHash] != "" && !isAssigningSubContext(existingObj, obj) {
 					return fmt.Errorf("failed to update existing owned object %s %s for %s: %w", k, gvk, debugID, err)
 				}
 				if should(obj, AnnotationUpdate) {
@@ -259,6 +259,19 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	}
 
 	return merr.NewErrors(errs...)
+}
+
+// isAssigningSubContext is checking to see if an existing managed object
+// was previously assigned with no subcontext and is now trying to assign
+// a subcontext.  We allow this as long as the previous owner is the same (gvk, namespace, name)
+func isAssigningSubContext(existingObj, newObj kclient.Object) bool {
+	existingAnno := existingObj.GetAnnotations()
+	newAnno := newObj.GetAnnotations()
+	return existingAnno[LabelSubContext] == "" &&
+		newAnno[LabelSubContext] != "" &&
+		existingAnno[LabelGVK] == newAnno[LabelGVK] &&
+		existingAnno[LabelNamespace] == newAnno[LabelNamespace] &&
+		existingAnno[LabelName] == newAnno[LabelName]
 }
 
 func (a *apply) list(gvk schema.GroupVersionKind, selector labels.Selector, objs map[objectset.ObjectKey]kclient.Object) (map[objectset.ObjectKey]kclient.Object, error) {
