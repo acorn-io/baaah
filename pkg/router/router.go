@@ -2,6 +2,9 @@ package router
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
+	"runtime"
 
 	"github.com/acorn-io/baaah/pkg/backend"
 	"k8s.io/apimachinery/pkg/fields"
@@ -35,6 +38,7 @@ type RouteBuilder struct {
 	objType       kclient.Object
 	name          string
 	namespace     string
+	routeName     string
 	middleware    []Middleware
 	sel           labels.Selector
 	fieldSelector fields.Selector
@@ -72,11 +76,18 @@ func (r RouteBuilder) IncludeRemoved() RouteBuilder {
 
 func (r RouteBuilder) Finalize(finalizerID string, h Handler) {
 	r.finalizeID = finalizerID
+	r.routeName = name()
 	r.Handler(h)
+}
+
+func name() string {
+	_, filename, line, _ := runtime.Caller(2)
+	return fmt.Sprintf("%s:%d", filepath.Base(filename), line)
 }
 
 func (r RouteBuilder) FinalizeFunc(finalizerID string, h HandlerFunc) {
 	r.finalizeID = finalizerID
+	r.routeName = name()
 	r.Handler(h)
 }
 
@@ -86,10 +97,14 @@ func (r RouteBuilder) Type(objType kclient.Object) RouteBuilder {
 }
 
 func (r RouteBuilder) HandlerFunc(h HandlerFunc) {
+	r.routeName = name()
 	r.Handler(h)
 }
 
 func (r RouteBuilder) Handler(h Handler) {
+	if r.routeName == "" {
+		r.routeName = name()
+	}
 	result := h
 	if r.finalizeID != "" {
 		result = FinalizerHandler{
@@ -125,6 +140,13 @@ func (r RouteBuilder) Handler(h Handler) {
 		}
 	}
 
+	if r.routeName != "" {
+		result = ErrorPrefix{
+			prefix: "[" + r.routeName + "] ",
+			Next:   result,
+		}
+	}
+
 	r.router.handlers.AddHandler(r.objType, result)
 }
 
@@ -134,10 +156,12 @@ func (r *Router) Start(ctx context.Context) error {
 }
 
 func (r *Router) Handle(objType kclient.Object, h Handler) {
+	r.routeName = name()
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 
 func (r *Router) HandleFunc(objType kclient.Object, h HandlerFunc) {
+	r.routeName = name()
 	r.RouteBuilder.Type(objType).Handler(h)
 }
 
@@ -150,6 +174,35 @@ func (i IgnoreRemoveHandler) Handle(req Request, resp Response) error {
 		return nil
 	}
 	return i.Next.Handle(req, resp)
+}
+
+type ErrorPrefix struct {
+	prefix string
+	Next   Handler
+}
+
+type errorPrefix struct {
+	Prefix string
+	Err    error
+}
+
+func (e errorPrefix) Error() string {
+	return e.Prefix + e.Err.Error()
+}
+
+func (e errorPrefix) Unwrap() error {
+	return e.Err
+}
+
+func (e ErrorPrefix) Handle(req Request, resp Response) error {
+	err := e.Next.Handle(req, resp)
+	if err == nil {
+		return nil
+	}
+	return errorPrefix{
+		Prefix: e.prefix,
+		Err:    err,
+	}
 }
 
 type NameNamespaceFilter struct {

@@ -41,6 +41,12 @@ type Request struct {
 	FromTrigger bool
 }
 
+func (r *Request) WithContext(ctx context.Context) Request {
+	newRequest := *r
+	newRequest.Ctx = ctx
+	return newRequest
+}
+
 func (r *Request) List(object kclient.ObjectList, opts *kclient.ListOptions) error {
 	return r.Client.List(r.Ctx, object, opts)
 }
