@@ -96,7 +96,7 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 			logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
 		} else if terminalErr != nil {
 			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) {
-				logrus.Errorf("terminal error while watching type %T %T: %v", o, cb, terminalErr)
+				logrus.Errorf("terminal error while watching type %T cb[%T]: %v", o, cb, terminalErr)
 			}
 			return last, terminalErr
 		} else if done {
