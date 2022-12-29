@@ -93,7 +93,9 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		o := typed.New[T]()
 		done, lastRevision, err, terminalErr := doWatch(ctx, revision, watchFunc, newCB)
 		if err != nil {
-			logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
+			if !errors.Is(terminalErr, context.Canceled) {
+				logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
+			}
 		} else if terminalErr != nil {
 			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) {
 				logrus.Errorf("terminal error while watching type %T cb[%T]: %v", o, cb, terminalErr)
