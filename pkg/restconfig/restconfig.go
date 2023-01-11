@@ -8,11 +8,21 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 func Default() (*rest.Config, error) {
 	return New(scheme.Scheme)
+}
+
+func FromFile(file, context string) (*rest.Config, error) {
+	loader := &clientcmd.ClientConfigLoadingRules{ExplicitPath: file}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		loader,
+		&clientcmd.ConfigOverrides{
+			CurrentContext: context,
+		}).ClientConfig()
 }
 
 func SetScheme(cfg *rest.Config, scheme *runtime.Scheme) *rest.Config {
