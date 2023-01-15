@@ -21,6 +21,7 @@ type apply struct {
 	ownerSubContext  string
 	owner            kclient.Object
 	ensure           bool
+	noPrune          bool
 }
 
 func (a apply) Ensure(ctx context.Context, objs ...kclient.Object) error {
@@ -38,6 +39,11 @@ func (a apply) Apply(ctx context.Context, owner kclient.Object, objs ...kclient.
 		return err
 	}
 	return a.apply(os)
+}
+
+func (a apply) WithNoPrune() Apply {
+	a.noPrune = true
+	return a
 }
 
 // WithPruneGVKs uses a known listing of existing gvks to modify the the prune types to allow for deletion of objects

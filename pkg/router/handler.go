@@ -267,6 +267,11 @@ type response struct {
 	delay    time.Duration
 	objects  []kclient.Object
 	registry TriggerRegistry
+	noPrune  bool
+}
+
+func (r *response) DisablePrune() {
+	r.noPrune = true
 }
 
 func (r *response) RetryAfter(delay time.Duration) {

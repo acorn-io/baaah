@@ -7,8 +7,13 @@ import (
 )
 
 type ResponseWrapper struct {
-	Delay time.Duration
-	Objs  []kclient.Object
+	NoPrune bool
+	Delay   time.Duration
+	Objs    []kclient.Object
+}
+
+func (r *ResponseWrapper) DisablePrune() {
+	r.NoPrune = true
 }
 
 func (r *ResponseWrapper) RetryAfter(delay time.Duration) {

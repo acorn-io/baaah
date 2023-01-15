@@ -250,8 +250,10 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		errs = append(errs, updateF(k))
 	}
 
-	for _, k := range toDelete {
-		errs = append(errs, deleteF(k, false))
+	if !a.noPrune {
+		for _, k := range toDelete {
+			errs = append(errs, deleteF(k, false))
+		}
 	}
 
 	for _, k := range toCreate {
