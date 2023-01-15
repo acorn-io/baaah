@@ -166,10 +166,11 @@ func (m *HandlerSet) WatchGVK(gvks ...schema.GroupVersionKind) error {
 		if m.watching[gvk] {
 			continue
 		}
-		if err := m.backend.Watch(m.ctx, gvk, m.name, m.onChange); err != nil {
+		if err := m.backend.Watch(m.ctx, gvk, m.name, m.onChange); err == nil {
+			m.watching[gvk] = true
+		} else {
 			watchErrs = append(watchErrs, err)
 		}
-		m.watching[gvk] = true
 	}
 	m.watchingLock.Unlock()
 	return merr.NewErrors(watchErrs...)
