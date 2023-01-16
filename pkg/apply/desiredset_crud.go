@@ -12,9 +12,11 @@ func (a *apply) create(obj kclient.Object) (kclient.Object, error) {
 
 func (a *apply) get(gvk schema.GroupVersionKind, obj kclient.Object, namespace, name string) (kclient.Object, error) {
 	if obj == nil {
-		ustr := &unstructured.Unstructured{}
-		ustr.SetGroupVersionKind(gvk)
-		obj = ustr
+		newObj, err := a.newObj(gvk, false)
+		if err != nil {
+			return nil, err
+		}
+		obj = newObj.(kclient.Object)
 	} else {
 		obj = obj.DeepCopyObject().(kclient.Object)
 	}

@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -295,16 +296,38 @@ func (a *apply) list(gvk schema.GroupVersionKind, selector labels.Selector, objs
 	return result, nil
 }
 
+func (a *apply) newObj(gvk schema.GroupVersionKind, list bool) (runtime.Object, error) {
+	obj, err := a.client.Scheme().New(gvk)
+	if runtime.IsNotRegisteredError(err) {
+		if list {
+			obj := &unstructured.UnstructuredList{}
+			obj.SetGroupVersionKind(gvk)
+			return obj, nil
+		} else {
+			obj := &unstructured.Unstructured{}
+			obj.SetGroupVersionKind(gvk)
+			return obj, nil
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
 func (a *apply) listBySelector(gvk schema.GroupVersionKind, selector labels.Selector) (map[objectset.ObjectKey]kclient.Object, error) {
 	var (
 		errs []error
 		objs = objectset.ObjectByKey{}
+		list kclient.ObjectList
 	)
 
 	gvk.Kind += "List"
-	list := &unstructured.UnstructuredList{}
-	list.SetGroupVersionKind(gvk)
-	err := a.client.List(a.ctx, list, &kclient.ListOptions{
+	obj, err := a.newObj(gvk, true)
+	if err != nil {
+		return nil, err
+	}
+	list = obj.(kclient.ObjectList)
+	err = a.client.List(a.ctx, list, &kclient.ListOptions{
 		Namespace:     a.listerNamespace,
 		LabelSelector: selector,
 	})
@@ -312,10 +335,14 @@ func (a *apply) listBySelector(gvk schema.GroupVersionKind, selector labels.Sele
 		return nil, err
 	}
 
-	for _, obj := range list.Items {
-		if err := addObjectToMap(objs, obj); err != nil {
+	err = meta.EachListItem(list, func(obj runtime.Object) error {
+		if err := addObjectToMap(objs, obj.(kclient.Object)); err != nil {
 			errs = append(errs, err)
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return objs, merr.NewErrors(errs...)
@@ -359,11 +386,11 @@ func sortObjectKeys(keys []objectset.ObjectKey) {
 	})
 }
 
-func addObjectToMap(objs objectset.ObjectByKey, obj unstructured.Unstructured) error {
+func addObjectToMap(objs objectset.ObjectByKey, obj kclient.Object) error {
 	objs[objectset.ObjectKey{
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
-	}] = &obj
+	}] = obj
 
 	return nil
 }
