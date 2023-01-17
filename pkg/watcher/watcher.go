@@ -93,7 +93,7 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		o := typed.New[T]()
 		done, lastRevision, err, terminalErr := doWatch(ctx, revision, watchFunc, newCB)
 		if err != nil {
-			if !errors.Is(terminalErr, context.Canceled) {
+			if !errors.Is(err, context.Canceled) {
 				logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
 			}
 		} else if terminalErr != nil {
