@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/acorn-io/baaah/pkg/typed"
@@ -93,11 +94,11 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		o := typed.New[T]()
 		done, lastRevision, err, terminalErr := doWatch(ctx, revision, watchFunc, newCB)
 		if err != nil {
-			if !errors.Is(err, context.Canceled) {
+			if !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "context canceled") {
 				logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
 			}
 		} else if terminalErr != nil {
-			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) {
+			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) && !strings.Contains(terminalErr.Error(), "context canceled") {
 				logrus.Errorf("terminal error while watching type %T cb[%T]: %v", o, cb, terminalErr)
 			}
 			return last, terminalErr
