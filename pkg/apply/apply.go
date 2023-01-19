@@ -17,6 +17,7 @@ type Apply interface {
 	WithOwnerSubContext(ownerSubContext string) Apply
 	WithNamespace(ns string) Apply
 	WithPruneGVKs(gvks ...schema.GroupVersionKind) Apply
+	WithPruneTypes(gvks ...kclient.Object) Apply
 	WithNoPrune() Apply
 
 	FindOwner(ctx context.Context, obj kclient.Object) (kclient.Object, error)

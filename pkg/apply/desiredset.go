@@ -6,6 +6,7 @@ import (
 	"github.com/acorn-io/baaah/pkg/apply/objectset"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // reconciler return false if it did not handle this object
@@ -17,6 +18,7 @@ type apply struct {
 	defaultNamespace string
 	listerNamespace  string
 	pruneTypes       map[schema.GroupVersionKind]bool
+	pruneObjects     []kclient.Object
 	reconcilers      map[schema.GroupVersionKind]reconciler
 	ownerSubContext  string
 	owner            kclient.Object
@@ -32,6 +34,16 @@ func (a apply) Ensure(ctx context.Context, objs ...kclient.Object) error {
 }
 
 func (a apply) Apply(ctx context.Context, owner kclient.Object, objs ...kclient.Object) error {
+	var newPruneGVKs []schema.GroupVersionKind
+	for _, pruneObject := range a.pruneObjects {
+		gvk, err := apiutil.GVKForObject(pruneObject, a.client.Scheme())
+		if err != nil {
+			return err
+		}
+		newPruneGVKs = append(newPruneGVKs, gvk)
+	}
+
+	a = a.withPruneGVKs(newPruneGVKs...)
 	a.ctx = ctx
 	a.owner = owner
 	os, err := objectset.NewObjectSet(a.client.Scheme(), objs...)
@@ -46,8 +58,17 @@ func (a apply) WithNoPrune() Apply {
 	return a
 }
 
+func (a apply) WithPruneTypes(objs ...kclient.Object) Apply {
+	a.pruneObjects = append(a.pruneObjects, objs...)
+	return a
+}
+
 // WithPruneGVKs uses a known listing of existing gvks to modify the the prune types to allow for deletion of objects
 func (a apply) WithPruneGVKs(gvks ...schema.GroupVersionKind) Apply {
+	return a.withPruneGVKs(gvks...)
+}
+
+func (a apply) withPruneGVKs(gvks ...schema.GroupVersionKind) apply {
 	pruneTypes := make(map[schema.GroupVersionKind]bool, len(gvks))
 	for k, v := range a.pruneTypes {
 		pruneTypes[k] = v
