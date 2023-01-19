@@ -7,7 +7,7 @@ import (
 )
 
 func SafeConcatNameWithSeparatorAndLength(length int, sep string, name ...string) string {
-	fullPath := strings.Join(name, "-")
+	fullPath := strings.Join(name, sep)
 	if len(fullPath) < length {
 		return fullPath
 	}
@@ -16,10 +16,10 @@ func SafeConcatNameWithSeparatorAndLength(length int, sep string, name ...string
 	// we are checking and if necessary removing the last char
 	c := fullPath[length-8]
 	if 'a' <= c && c <= 'z' || '0' <= c && c <= '9' {
-		return fullPath[0:length-7] + "-" + hex.EncodeToString(digest[0:])[0:5]
+		return fullPath[0:length-7] + sep + hex.EncodeToString(digest[0:])[0:5]
 	}
 
-	return fullPath[0:length-8] + "-" + hex.EncodeToString(digest[0:])[0:6]
+	return fullPath[0:length-8] + sep + hex.EncodeToString(digest[0:])[0:6]
 }
 
 func SafeConcatName(name ...string) string {
