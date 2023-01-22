@@ -16,13 +16,17 @@ func Default() (*rest.Config, error) {
 	return New(scheme.Scheme)
 }
 
-func FromFile(file, context string) (*rest.Config, error) {
+func ClientConfigFromFile(file, context string) clientcmd.ClientConfig {
 	loader := &clientcmd.ClientConfigLoadingRules{ExplicitPath: file}
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		loader,
 		&clientcmd.ConfigOverrides{
 			CurrentContext: context,
-		}).ClientConfig()
+		})
+}
+
+func FromFile(file, context string) (*rest.Config, error) {
+	return ClientConfigFromFile(file, context).ClientConfig()
 }
 
 func SetScheme(cfg *rest.Config, scheme *runtime.Scheme) *rest.Config {
