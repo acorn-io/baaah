@@ -233,6 +233,7 @@ func (a *apply) applyPatch(gvk schema.GroupVersionKind, debugID string, oldObjec
 	ustr.SetName(oldObject.GetName())
 
 	logrus.Debugf("DesiredSet - Updated %s %s/%s for %s -- %s %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patchType, patch)
+	a.log("patching", gvk, oldObject)
 	if a.ensure {
 		newObject.SetResourceVersion(oldObject.GetResourceVersion())
 		return true, a.client.Patch(a.ctx, newObject, kclient.RawPatch(patchType, patch))

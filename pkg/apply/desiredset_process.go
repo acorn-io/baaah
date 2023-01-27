@@ -197,7 +197,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 			return fmt.Errorf("failed to prepare create %s %s for %s: %w", k, gvk, debugID, err)
 		}
 
-		_, err = a.create(obj)
+		_, err = a.create(gvk, obj)
 		if apierrors.IsAlreadyExists(err) {
 			// Taking over an object that wasn't previously managed by us
 			existingObj, getErr := a.get(gvk, objs[k], k.Namespace, k.Name)

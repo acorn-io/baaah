@@ -54,7 +54,9 @@ func (b *Backend) Start(ctx context.Context) (err error) {
 	if !b.cache.WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
-	b.cacheClient.startPurge(ctx)
+	if !b.started.Load() {
+		b.cacheClient.startPurge(ctx)
+	}
 	return nil
 }
 

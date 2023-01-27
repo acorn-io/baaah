@@ -56,7 +56,7 @@ func (f FinalizerHandler) Handle(req Request, resp Response) error {
 		}
 	}
 
-	if len(newObj.GetFinalizers()) > 0 && newObj.GetFinalizers()[0] == f.FinalizerID {
+	if newResp.Delay == 0 && len(newObj.GetFinalizers()) > 0 && newObj.GetFinalizers()[0] == f.FinalizerID {
 		newObj.SetFinalizers(obj.GetFinalizers()[1:])
 		if err := req.Client.Update(req.Ctx, newObj); err != nil {
 			return err
