@@ -221,14 +221,14 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 		return nil, err
 	}
 
-	if req.FromTrigger {
-		logrus.Infof("Trigger %s/%s %v", req.Namespace, req.Name, req.GVK)
-	} else {
-		logrus.Infof("Handling %s/%s %v", req.Namespace, req.Name, req.GVK)
-	}
-
 	handles := m.handlers.Handles(req)
 	if handles {
+		if req.FromTrigger {
+			logrus.Infof("Handling trigger [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
+		} else {
+			logrus.Infof("Handling [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
+		}
+
 		if err := m.handlers.Handle(req, resp); err != nil {
 			if err := m.handleError(req, resp, err); err != nil {
 				return nil, err

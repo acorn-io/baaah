@@ -6,6 +6,7 @@ import (
 
 	"github.com/acorn-io/baaah/pkg/backend"
 	"github.com/acorn-io/baaah/pkg/uncached"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,6 +43,7 @@ func (m *triggers) invokeTriggers(req Request) {
 		}
 		for _, matcher := range matchers {
 			if matcher.Match(req.GVK, req.Namespace, req.Name, req.Object) {
+				logrus.Infof("Triggering [%s] [%v] from [%s] [%v]", enqueueTarget.key, enqueueTarget.gvk, req.Key, req.GVK)
 				_ = m.trigger.Trigger(enqueueTarget.gvk, enqueueTarget.key, 0)
 				break
 			}
