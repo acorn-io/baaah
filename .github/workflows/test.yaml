@@ -1,13 +1,13 @@
 name: test
 on:
   push:
-    branchs:
+    branches:
       - main
   pull_request: {}
 
 jobs:
   test:
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
