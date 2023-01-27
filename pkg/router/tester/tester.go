@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,7 +55,7 @@ func readFile(scheme *runtime.Scheme, dir, file string) ([]kclient.Object, error
 		objs []kclient.Object
 	)
 
-	files, err := ioutil.ReadDir(path + ".d")
+	files, err := os.ReadDir(path + ".d")
 	if os.IsNotExist(err) {
 	} else if err != nil {
 		return nil, err
@@ -73,7 +72,7 @@ func readFile(scheme *runtime.Scheme, dir, file string) ([]kclient.Object, error
 		objs = append(objs, nestedObj...)
 	}
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return objs, nil
 	} else if err != nil {
@@ -119,6 +118,7 @@ func FromDir(scheme *runtime.Scheme, path string) (*Harness, kclient.Object, err
 }
 
 func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler router.HandlerFunc) {
+	t.Helper()
 	t.Run(path, func(t *testing.T) {
 		harness, input, err := FromDir(scheme, path)
 		if err != nil {
@@ -132,10 +132,12 @@ func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler rout
 }
 
 func (b *Harness) InvokeFunc(t *testing.T, input kclient.Object, handler router.HandlerFunc) (*Response, error) {
+	t.Helper()
 	return b.Invoke(t, input, handler)
 }
 
 func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, existing ...kclient.Object) router.Request {
+	t.Helper()
 	gvk, err := apiutil.GVKForObject(input, scheme)
 	if err != nil {
 		t.Fatal(err)
@@ -157,6 +159,7 @@ func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, exis
 }
 
 func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Handler) (*Response, error) {
+	t.Helper()
 	var (
 		req  = NewRequest(t, b.Scheme, input, b.Existing...)
 		resp = Response{

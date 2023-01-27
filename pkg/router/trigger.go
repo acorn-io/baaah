@@ -78,19 +78,6 @@ func (m *triggers) Trigger(req Request, resp *response) error {
 	return nil
 }
 
-func (m *triggers) clearMatchers(gvk schema.GroupVersionKind, key string) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	deleteKey := enqueueTarget{
-		key: key,
-		gvk: gvk,
-	}
-	for _, m := range m.matchers {
-		delete(m, deleteKey)
-	}
-}
-
 func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj runtime.Object, namespace, name string, selector labels.Selector, fields fields.Selector) (schema.GroupVersionKind, bool, error) {
 	if uncached.IsWrapped(obj) {
 		return schema.GroupVersionKind{}, false, nil

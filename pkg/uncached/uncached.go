@@ -39,9 +39,7 @@ func Unwrap(obj runtime.Object) runtime.Object {
 
 func UnwrapList(obj kclient.ObjectList) kclient.ObjectList {
 	if h, ok := obj.(*HolderList); ok {
-		if _, ok := h.ObjectList.(kclient.ObjectList); ok {
-			return h.ObjectList
-		}
+		return h.ObjectList
 	}
 	return obj
 }

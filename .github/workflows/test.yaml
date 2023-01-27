@@ -1,0 +1,21 @@
+name: test
+on:
+  push:
+    branchs:
+      - main
+  pull_request: {}
+
+jobs:
+  test:
+    runs-on: buildjet-4vcpu-ubuntu-2004
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - run: make setup-ci-env
+      - run: make validate-ci
+      - run: make validate
+      - run: make test
