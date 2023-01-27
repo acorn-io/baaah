@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"reflect"
 	"strings"
 
@@ -259,21 +259,6 @@ func (a *apply) compareObjects(gvk schema.GroupVersionKind, debugID string, oldO
 	return nil
 }
 
-func removeManagedFields(data map[string]interface{}) bool {
-	metadata, ok := data["metadata"]
-	if !ok {
-		return false
-	}
-
-	data, _ = metadata.(map[string]interface{})
-	if _, ok := data["managedFields"]; ok {
-		delete(data, "managedFields")
-		return true
-	}
-
-	return false
-}
-
 func removeMetadataFields(data map[string]interface{}) bool {
 	metadata, ok := data["metadata"]
 	if !ok {
@@ -336,7 +321,7 @@ func appliedFromAnnotation(str string) []byte {
 		return nil
 	}
 
-	b, err = ioutil.ReadAll(r)
+	b, err = io.ReadAll(r)
 	if err != nil {
 		return nil
 	}

@@ -20,11 +20,6 @@ type patchCacheEntry struct {
 	lookup    strategicpatch.LookupPatchMeta
 }
 
-func isJSONPatch(patch []byte) bool {
-	// a JSON patch is a list
-	return len(patch) > 0 && patch[0] == '['
-}
-
 func getMergeStyle(gvk schema.GroupVersionKind) (types.PatchType, strategicpatch.LookupPatchMeta, error) {
 	var (
 		patchType       types.PatchType

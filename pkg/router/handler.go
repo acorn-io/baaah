@@ -283,6 +283,7 @@ func (r *response) RetryAfter(delay time.Duration) {
 
 func (r *response) Objects(objs ...kclient.Object) {
 	for _, obj := range objs {
+		// nolint:errcheck
 		r.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil)
 		r.objects = append(r.objects, obj)
 	}
