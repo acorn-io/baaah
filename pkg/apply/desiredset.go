@@ -22,6 +22,7 @@ type apply struct {
 	reconcilers      map[schema.GroupVersionKind]reconciler
 	ownerSubContext  string
 	owner            kclient.Object
+	ownerGVK         schema.GroupVersionKind
 	ensure           bool
 	noPrune          bool
 }
@@ -46,6 +47,13 @@ func (a apply) Apply(ctx context.Context, owner kclient.Object, objs ...kclient.
 	a = a.withPruneGVKs(newPruneGVKs...)
 	a.ctx = ctx
 	a.owner = owner
+	if owner != nil {
+		gvk, err := apiutil.GVKForObject(a.owner, a.client.Scheme())
+		if err != nil {
+			return err
+		}
+		a.ownerGVK = gvk
+	}
 	os, err := objectset.NewObjectSet(a.client.Scheme(), objs...)
 	if err != nil {
 		return err

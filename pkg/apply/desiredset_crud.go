@@ -6,7 +6,8 @@ import (
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (a *apply) create(obj kclient.Object) (kclient.Object, error) {
+func (a *apply) create(gvk schema.GroupVersionKind, obj kclient.Object) (kclient.Object, error) {
+	a.log("creating", gvk, obj)
 	return obj, a.client.Create(a.ctx, obj)
 }
 
@@ -29,5 +30,6 @@ func (a *apply) delete(gvk schema.GroupVersionKind, namespace, name string) erro
 	ustr.SetGroupVersionKind(gvk)
 	ustr.SetName(name)
 	ustr.SetNamespace(namespace)
+	a.log("deleting", gvk, ustr)
 	return a.client.Delete(a.ctx, ustr)
 }
