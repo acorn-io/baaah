@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/leader"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,11 +18,15 @@ type Router struct {
 
 	OnErrorHandler ErrorHandler
 	handlers       *HandlerSet
+	electionConfig *leader.ElectionConfig
 }
 
-func New(handlerSet *HandlerSet) *Router {
+// New returns a new *Router with given HandlerSet and ElectionConfig. Passing a nil ElectionConfig is valid and results
+// in no leader election for the router.
+func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig) *Router {
 	r := &Router{
-		handlers: handlerSet,
+		handlers:       handlerSet,
+		electionConfig: electionConfig,
 	}
 	r.RouteBuilder.router = r
 	return r
@@ -152,6 +157,10 @@ func (r RouteBuilder) Handler(h Handler) {
 
 func (r *Router) Start(ctx context.Context) error {
 	r.handlers.onError = r.OnErrorHandler
+	if r.electionConfig != nil {
+		return r.electionConfig.Run(ctx, r.handlers.Start)
+	}
+
 	return r.handlers.Start(ctx)
 }
 
