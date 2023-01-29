@@ -18,6 +18,31 @@ type Options struct {
 	ElectionConfig *leader.ElectionConfig
 }
 
+func (o *Options) complete(scheme *runtime.Scheme) (*Options, error) {
+	var result Options
+	if o != nil {
+		result = *o
+	}
+
+	if result.Backend == nil {
+		if result.RESTConfig == nil {
+			var err error
+			result.RESTConfig, err = restconfig.New(scheme)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		backend, err := lasso.NewRuntimeForNamespace(o.RESTConfig, o.Namespace, scheme)
+		if err != nil {
+			return nil, err
+		}
+		result.Backend = backend.Backend
+	}
+
+	return &result, nil
+}
+
 // DefaultOptions represent the standard options for a Router.
 // The default leader election uses a lease lock and a TTL of 15 seconds.
 func DefaultOptions(routerName string, scheme *runtime.Scheme) (*Options, error) {
@@ -49,5 +74,9 @@ func DefaultRouter(routerName string, scheme *runtime.Scheme) (*router.Router, e
 }
 
 func NewRouter(handlerName string, scheme *runtime.Scheme, opts *Options) (*router.Router, error) {
+	opts, err := opts.complete(scheme)
+	if err != nil {
+		return nil, err
+	}
 	return router.New(router.NewHandlerSet(handlerName, scheme, opts.Backend), opts.ElectionConfig), nil
 }
