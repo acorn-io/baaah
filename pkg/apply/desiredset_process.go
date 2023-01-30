@@ -202,8 +202,12 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 			// Taking over an object that wasn't previously managed by us
 			existingObj, getErr := a.get(gvk, objs[k], k.Namespace, k.Name)
 			if getErr == nil {
-				if existingObj.GetLabels()[LabelHash] != "" && !isAssigningSubContext(existingObj, obj) {
-					return fmt.Errorf("failed to update existing owned object %s %s for %s: %w", k, gvk, debugID, err)
+				if existingObj.GetLabels()[LabelHash] != "" && !isAssigningSubContext(existingObj, obj) && !isAllowOwnerTransition(existingObj, obj) {
+					return fmt.Errorf("failed to update existing owned object %s %s for %s, old subcontext [%s] gvk [%s] namespace [%s] name [%s]: %w", k, gvk, debugID,
+						existingObj.GetAnnotations()[LabelSubContext],
+						existingObj.GetAnnotations()[LabelGVK],
+						existingObj.GetAnnotations()[LabelNamespace],
+						existingObj.GetAnnotations()[LabelName], err)
 				}
 				if should(obj, AnnotationUpdate) {
 					toUpdate = append(toUpdate, k)
@@ -262,6 +266,20 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	}
 
 	return merr.NewErrors(errs...)
+}
+
+// isAllowedOwnerTransition is checking to see if an existing managed object
+// was previously assigned with a subcontext that we want to allow to be changed
+// to a different subcontext
+func isAllowOwnerTransition(existingObj, newObj kclient.Object) bool {
+	existingAnno := existingObj.GetAnnotations()
+	newAnno := newObj.GetAnnotations()
+	return newAnno[LabelSubContext] != "" &&
+		existingAnno[LabelGVK] == newAnno[LabelGVK] &&
+		existingAnno[LabelNamespace] == newAnno[LabelNamespace] &&
+		existingAnno[LabelName] == newAnno[LabelName] &&
+		validOwnerChange[fmt.Sprintf("%s => %s", existingAnno[LabelSubContext], newAnno[LabelSubContext])]
+
 }
 
 // isAssigningSubContext is checking to see if an existing managed object

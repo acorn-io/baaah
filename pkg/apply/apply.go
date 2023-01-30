@@ -2,6 +2,7 @@ package apply
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -10,6 +11,18 @@ import (
 const (
 	defaultNamespace = "default"
 )
+
+var (
+	// validOwnerChange is a mapping of old to new subcontext
+	// values that are allowed to change.  The key is in the format of
+	// "oldValue => newValue"
+	// subcontext and the value is the old subcontext name.
+	validOwnerChange = map[string]bool{}
+)
+
+func AddValidOwnerChange(oldSubcontext, newSubContext string) {
+	validOwnerChange[fmt.Sprintf("%s => %s", oldSubcontext, newSubContext)] = true
+}
 
 type Apply interface {
 	Ensure(ctx context.Context, obj ...kclient.Object) error
