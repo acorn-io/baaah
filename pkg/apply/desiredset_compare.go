@@ -167,6 +167,11 @@ func sanitizePatch(patch []byte, removeObjectSetAnnotation bool) ([]byte, error)
 		return []byte("{}"), nil
 	}
 
+	// If the only thing to update is the applied field then don't update
+	if emptyMaps(data, "metadata", "annotations", "apply.acorn.io/applied") {
+		return []byte("{}"), nil
+	}
+
 	if !mod {
 		return patch, nil
 	}
