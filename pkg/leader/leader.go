@@ -14,7 +14,10 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
-const defaultLeaderTTL = 15 * time.Second
+const (
+	defaultLeaderTTL = 15 * time.Second
+	devLeaderTTL     = time.Hour
+)
 
 type Callback func(context.Context) error
 
@@ -25,8 +28,12 @@ type ElectionConfig struct {
 }
 
 func NewDefaultElectionConfig(namespace, name string, cfg *rest.Config) *ElectionConfig {
+	ttl := defaultLeaderTTL
+	if os.Getenv("BAAAH_DEV_MODE") != "" {
+		ttl = devLeaderTTL
+	}
 	return &ElectionConfig{
-		TTL:              defaultLeaderTTL,
+		TTL:              ttl,
 		Namespace:        namespace,
 		Name:             name,
 		ResourceLockType: resourcelock.LeasesResourceLock,
