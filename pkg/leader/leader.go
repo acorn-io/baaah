@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultLeaderTTL = 15 * time.Second
+	defaultLeaderTTL = time.Minute
 	devLeaderTTL     = time.Hour
 )
 
