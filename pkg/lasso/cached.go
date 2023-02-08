@@ -63,7 +63,7 @@ func (c *cacheClient) startPurge(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				break
+				return
 			case <-time.After(cacheDuration):
 			}
 
