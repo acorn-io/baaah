@@ -13,6 +13,7 @@ import (
 	"github.com/moby/locker"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
+	"golang.org/x/time/rate"
 	apierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,7 +22,10 @@ import (
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const TriggerPrefix = "_t "
+const (
+	TriggerPrefix = "_t "
+	ReplayPrefix  = "_r "
+)
 
 type HandlerSet struct {
 	ctx      context.Context
@@ -36,6 +40,14 @@ type HandlerSet struct {
 	watchingLock sync.Mutex
 	watching     map[schema.GroupVersionKind]bool
 	locker       locker.Locker
+
+	limiterLock sync.Mutex
+	limiters    map[limiterKey]*rate.Limiter
+}
+
+type limiterKey struct {
+	key string
+	gvk schema.GroupVersionKind
 }
 
 func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend) *HandlerSet {
@@ -176,11 +188,49 @@ func (m *HandlerSet) WatchGVK(gvks ...schema.GroupVersionKind) error {
 	return merr.NewErrors(watchErrs...)
 }
 
+func (m *HandlerSet) getDelay(gvk schema.GroupVersionKind, key string) time.Duration {
+	m.limiterLock.Lock()
+	defer m.limiterLock.Unlock()
+	limit, ok := m.limiters[limiterKey{key: key, gvk: gvk}]
+	if !ok {
+		// Limit to once every 15 seconds with a burst of 5. This limits the
+		// overall rate at which we can process a key regardless of the key
+		// source (change event, trigger, error re-enqueue)
+		limit = rate.NewLimiter(rate.Limit(1.0/15.0), 10)
+		if m.limiters == nil {
+			m.limiters = map[limiterKey]*rate.Limiter{}
+		}
+		m.limiters[limiterKey{key: key, gvk: gvk}] = limit
+	}
+	return limit.Reserve().Delay()
+}
+
+func (m *HandlerSet) forgetBackoff(gvk schema.GroupVersionKind, key string) {
+	m.limiterLock.Lock()
+	defer m.limiterLock.Unlock()
+	delete(m.limiters, limiterKey{key: key, gvk: gvk})
+}
+
 func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeObject runtime.Object) (runtime.Object, error) {
 	fromTrigger := false
+	fromReplay := false
 	if strings.HasPrefix(key, TriggerPrefix) {
 		fromTrigger = true
 		key = strings.TrimPrefix(key, TriggerPrefix)
+	}
+	if strings.HasPrefix(key, ReplayPrefix) {
+		fromTrigger = false
+		fromReplay = true
+		key = strings.TrimPrefix(key, ReplayPrefix)
+	}
+
+	if !fromReplay {
+		// Process delay have key has be reassigned from the TriggerPrefix
+		delay := m.getDelay(gvk, key)
+		if delay > 0 {
+			logrus.Warnf("Backing off %s for key %s on GVK %s", delay, key, gvk)
+			return runtimeObject, m.backend.Trigger(gvk, ReplayPrefix+key, delay)
+		}
 	}
 
 	obj, err := m.scheme.New(gvk)
@@ -203,6 +253,10 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 		runtimeObject = obj
 	} else if err != nil && !apierror.IsNotFound(err) {
 		return nil, err
+	}
+
+	if runtimeObject == nil {
+		m.forgetBackoff(gvk, key)
 	}
 
 	return m.handle(gvk, key, runtimeObject, fromTrigger)
@@ -283,8 +337,7 @@ func (r *response) RetryAfter(delay time.Duration) {
 
 func (r *response) Objects(objs ...kclient.Object) {
 	for _, obj := range objs {
-		// nolint:errcheck
-		r.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil)
+		_ = r.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil)
 		r.objects = append(r.objects, obj)
 	}
 }

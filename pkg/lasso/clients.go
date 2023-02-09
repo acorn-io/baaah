@@ -37,7 +37,11 @@ func NewRuntimeForNamespace(cfg *rest.Config, namespace string, scheme *runtime.
 	})
 
 	factory := controller.NewSharedControllerFactory(cacheFactory, &controller.SharedControllerFactoryOptions{
-		DefaultRateLimiter: workqueue.NewItemFastSlowRateLimiter(500*time.Millisecond, time.Second, 2),
+		// In baaah this is only invoked when a key fails to process
+		DefaultRateLimiter: workqueue.NewMaxOfRateLimiter(
+			// This will go .5, 1, 2, 4, 8 seconds, etc up until 15 minutes
+			workqueue.NewItemExponentialFailureRateLimiter(500*time.Millisecond, 15*time.Minute),
+		),
 	})
 	if err != nil {
 		return nil, err
