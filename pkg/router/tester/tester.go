@@ -117,18 +117,19 @@ func FromDir(scheme *runtime.Scheme, path string) (*Harness, kclient.Object, err
 	}, input[0], nil
 }
 
-func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler router.HandlerFunc) {
+func DefaultTest(t *testing.T, scheme *runtime.Scheme, path string, handler router.HandlerFunc) (result *Response) {
 	t.Helper()
 	t.Run(path, func(t *testing.T) {
 		harness, input, err := FromDir(scheme, path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = harness.Invoke(t, input, handler)
+		result, err = harness.Invoke(t, input, handler)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
+	return
 }
 
 func (b *Harness) InvokeFunc(t *testing.T, input kclient.Object, handler router.HandlerFunc) (*Response, error) {
