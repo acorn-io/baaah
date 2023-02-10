@@ -17,7 +17,8 @@ func Default() (*rest.Config, error) {
 }
 
 func ClientConfigFromFile(file, context string) clientcmd.ClientConfig {
-	loader := &clientcmd.ClientConfigLoadingRules{ExplicitPath: file}
+	loader := clientcmd.NewDefaultClientConfigLoadingRules()
+	loader.ExplicitPath = file
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		loader,
 		&clientcmd.ConfigOverrides{
