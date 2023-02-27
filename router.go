@@ -15,7 +15,8 @@ type Options struct {
 	RESTConfig *rest.Config
 	Namespace  string
 	// ElectionConfig being nil represents no leader election for the router.
-	ElectionConfig *leader.ElectionConfig
+	ElectionConfig         *leader.ElectionConfig
+	HealthProbeBindAddress int // turn on healthcheck by specifying port
 }
 
 func (o *Options) complete(scheme *runtime.Scheme) (*Options, error) {
@@ -56,9 +57,10 @@ func DefaultOptions(routerName string, scheme *runtime.Scheme) (*Options, error)
 	}
 
 	return &Options{
-		Backend:        rt.Backend,
-		RESTConfig:     cfg,
-		ElectionConfig: leader.NewDefaultElectionConfig("", routerName, cfg),
+		Backend:                rt.Backend,
+		RESTConfig:             cfg,
+		ElectionConfig:         leader.NewDefaultElectionConfig("", routerName, cfg),
+		HealthProbeBindAddress: 8080,
 	}, nil
 }
 
@@ -78,5 +80,5 @@ func NewRouter(handlerName string, scheme *runtime.Scheme, opts *Options) (*rout
 	if err != nil {
 		return nil, err
 	}
-	return router.New(router.NewHandlerSet(handlerName, scheme, opts.Backend), opts.ElectionConfig), nil
+	return router.New(router.NewHandlerSet(handlerName, scheme, opts.Backend), opts.ElectionConfig, opts.HealthProbeBindAddress), nil
 }

@@ -3,6 +3,8 @@ package leader
 import (
 	"context"
 	"fmt"
+	"k8s.io/apiserver/pkg/server/healthz"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,6 +27,19 @@ type ElectionConfig struct {
 	TTL                               time.Duration
 	Name, Namespace, ResourceLockType string
 	restCfg                           *rest.Config
+	HealthProbeBindAddress            int
+}
+
+func (ec ElectionConfig) startReadyzProbe() {
+	watchDog := healthz.PingHealthz
+	healthMux := http.NewServeMux()
+	healthz.InstallReadyzHandler(healthMux, watchDog)
+	go func() {
+		logrus.Infof("Starting readyz handler at %d", ec.HealthProbeBindAddress)
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", ec.HealthProbeBindAddress), healthMux); err != nil {
+			logrus.Fatalf("failed to listen & server readyz http server from port %d: %v", ec.HealthProbeBindAddress, err)
+		}
+	}()
 }
 
 func NewDefaultElectionConfig(namespace, name string, cfg *rest.Config) *ElectionConfig {
@@ -99,9 +114,11 @@ func (ec ElectionConfig) run(ctx context.Context, cb Callback) error {
 		RetryPeriod:   ec.TTL / 4,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
+
 				if err := cb(ctx); err != nil {
 					logrus.Fatalf("leader callback error: %v", err)
 				}
+				// Start watchdog here.
 			},
 			OnStoppedLeading: func() {
 				select {
@@ -131,6 +148,9 @@ func (ec ElectionConfig) run(ctx context.Context, cb Callback) error {
 	}
 
 	go func() {
+		if ec.HealthProbeBindAddress != 0 {
+			ec.startReadyzProbe()
+		}
 		le.Run(sigCtx)
 		cancel()
 	}()

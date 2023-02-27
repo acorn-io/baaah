@@ -3,6 +3,9 @@ package router
 import (
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apiserver/pkg/server/healthz"
+	"net/http"
 	"path/filepath"
 	"runtime"
 
@@ -16,17 +19,19 @@ import (
 type Router struct {
 	RouteBuilder
 
-	OnErrorHandler ErrorHandler
-	handlers       *HandlerSet
-	electionConfig *leader.ElectionConfig
+	OnErrorHandler         ErrorHandler
+	handlers               *HandlerSet
+	electionConfig         *leader.ElectionConfig
+	HealthProbeBindAddress int
 }
 
 // New returns a new *Router with given HandlerSet and ElectionConfig. Passing a nil ElectionConfig is valid and results
 // in no leader election for the router.
-func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig) *Router {
+func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig, healthProbeBindAddress int) *Router {
 	r := &Router{
-		handlers:       handlerSet,
-		electionConfig: electionConfig,
+		handlers:               handlerSet,
+		electionConfig:         electionConfig,
+		HealthProbeBindAddress: healthProbeBindAddress,
 	}
 	r.RouteBuilder.router = r
 	return r
@@ -155,13 +160,39 @@ func (r RouteBuilder) Handler(h Handler) {
 	r.router.handlers.AddHandler(r.objType, result)
 }
 
+func (r *Router) wrapCBWithHealthCheck(callback func(context.Context) error) func(context.Context) error {
+	return func(ctx context.Context) error {
+		if err := callback(ctx); err != nil {
+			return fmt.Errorf("failed to start handlers")
+		}
+		if r.HealthProbeBindAddress != 0 {
+			watchDog := healthz.PingHealthz
+			healthMux := http.NewServeMux()
+			healthz.InstallReadyzHandler(healthMux, watchDog)
+			go func() {
+				logrus.Infof("Starting readyz handler at %d", r.HealthProbeBindAddress)
+				if err := http.ListenAndServe(fmt.Sprintf(":%d", r.HealthProbeBindAddress), healthMux); err != nil {
+					logrus.Fatalf("failed to listen & server readyz http server from port %d: %v", r.HealthProbeBindAddress, err)
+				}
+			}()
+		}
+		return nil
+	}
+}
+
 func (r *Router) Start(ctx context.Context) error {
 	r.handlers.onError = r.OnErrorHandler
+
 	if r.electionConfig != nil {
+		if r.HealthProbeBindAddress != 0 {
+			// Pass health probe port through to electionConfig on start
+			r.electionConfig.HealthProbeBindAddress = r.HealthProbeBindAddress
+		}
 		return r.electionConfig.Run(ctx, r.handlers.Start)
 	}
 
-	return r.handlers.Start(ctx)
+	cb := r.wrapCBWithHealthCheck(r.handlers.Start)
+	return cb(ctx)
 }
 
 func (r *Router) Handle(objType kclient.Object, h Handler) {
