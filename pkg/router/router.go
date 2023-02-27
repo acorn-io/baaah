@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"github.com/acorn-io/baaah/pkg/healthprobes"
 	"path/filepath"
 	"runtime"
 
@@ -16,17 +17,19 @@ import (
 type Router struct {
 	RouteBuilder
 
-	OnErrorHandler ErrorHandler
-	handlers       *HandlerSet
-	electionConfig *leader.ElectionConfig
+	OnErrorHandler      ErrorHandler
+	handlers            *HandlerSet
+	electionConfig      *leader.ElectionConfig
+	HealthProbeBindPort int
 }
 
 // New returns a new *Router with given HandlerSet and ElectionConfig. Passing a nil ElectionConfig is valid and results
 // in no leader election for the router.
-func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig) *Router {
+func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig, healthProbeBindPort int) *Router {
 	r := &Router{
-		handlers:       handlerSet,
-		electionConfig: electionConfig,
+		handlers:            handlerSet,
+		electionConfig:      electionConfig,
+		HealthProbeBindPort: healthProbeBindPort,
 	}
 	r.RouteBuilder.router = r
 	return r
@@ -155,13 +158,33 @@ func (r RouteBuilder) Handler(h Handler) {
 	r.router.handlers.AddHandler(r.objType, result)
 }
 
+func (r *Router) wrapCBWithHealthCheck(callback func(context.Context) error) func(context.Context) error {
+	return func(ctx context.Context) error {
+		if err := callback(ctx); err != nil {
+			return fmt.Errorf("failed to start handlers")
+		}
+		healthprobes.StartReadyzPingHandler(r)
+		return nil
+	}
+}
+
+func (r *Router) GetReadyzProbePort() int {
+	return r.HealthProbeBindPort
+}
+
 func (r *Router) Start(ctx context.Context) error {
 	r.handlers.onError = r.OnErrorHandler
+
 	if r.electionConfig != nil {
+		if r.electionConfig.HealthProbeBindAddress == 0 {
+			// Pass health probe port through to electionConfig on start
+			r.electionConfig.HealthProbeBindAddress = r.HealthProbeBindPort
+		}
 		return r.electionConfig.Run(ctx, r.handlers.Start)
 	}
 
-	return r.handlers.Start(ctx)
+	cb := r.wrapCBWithHealthCheck(r.handlers.Start)
+	return cb(ctx)
 }
 
 func (r *Router) Handle(objType kclient.Object, h Handler) {

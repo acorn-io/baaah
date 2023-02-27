@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/acorn-io/baaah/pkg/healthprobes"
+
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
@@ -25,6 +27,11 @@ type ElectionConfig struct {
 	TTL                               time.Duration
 	Name, Namespace, ResourceLockType string
 	restCfg                           *rest.Config
+	HealthProbeBindAddress            int
+}
+
+func (ec ElectionConfig) GetReadyzProbePort() int {
+	return ec.HealthProbeBindAddress
 }
 
 func NewDefaultElectionConfig(namespace, name string, cfg *rest.Config) *ElectionConfig {
@@ -99,9 +106,12 @@ func (ec ElectionConfig) run(ctx context.Context, cb Callback) error {
 		RetryPeriod:   ec.TTL / 4,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
+				logrus.Info("started leading")
 				if err := cb(ctx); err != nil {
 					logrus.Fatalf("leader callback error: %v", err)
 				}
+				// After controller starts on the leader, start readyz handler
+				healthprobes.StartReadyzPingHandler(ec)
 			},
 			OnStoppedLeading: func() {
 				select {
@@ -134,5 +144,11 @@ func (ec ElectionConfig) run(ctx context.Context, cb Callback) error {
 		le.Run(sigCtx)
 		cancel()
 	}()
+
+	// If we are not the leader, start the healthcheck not waiting for the controller
+	if !le.IsLeader() {
+		logrus.Info("Started following")
+		healthprobes.StartReadyzPingHandler(ec)
+	}
 	return nil
 }
