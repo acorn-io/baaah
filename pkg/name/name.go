@@ -7,7 +7,18 @@ import (
 )
 
 func SafeConcatNameWithSeparatorAndLength(length int, sep string, name ...string) string {
-	fullPath := strings.Join(name, sep)
+
+	var names []string
+
+	// trim spaces and remove empty strings
+	for _, str := range name {
+		str = strings.TrimSpace(str)
+		if len(str) > 0 {
+			names = append(names, str)
+		}
+	}
+
+	fullPath := strings.Join(names, sep)
 	if len(fullPath) < length {
 		return fullPath
 	}
