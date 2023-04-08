@@ -25,3 +25,14 @@ func SafeConcatNameWithSeparatorAndLength(length int, sep string, name ...string
 func SafeConcatName(name ...string) string {
 	return SafeConcatNameWithSeparatorAndLength(64, "-", name...)
 }
+
+func SafeHashConcatName(name ...string) string {
+	d := sha256.New()
+	for _, part := range name {
+		d.Write([]byte(part))
+		d.Write([]byte{'\x00'})
+	}
+	hash := d.Sum(nil)
+	suffix := hex.EncodeToString(hash[:])[:8]
+	return SafeConcatName(append(name, suffix)...)
+}
