@@ -186,6 +186,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		return fmt.Errorf("failed to list %s for %s: %w", gvk, debugID, err)
 	}
 
+	var toReplace []objectset.ObjectKey
 	toCreate, toDelete, toUpdate := compareSets(existing, objs)
 
 	// check for resources in the objectset but under a different version of the same group/kind
@@ -236,8 +237,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		err := a.compareObjects(gvk, debugID, existing[k], objs[k])
 		if err == ErrReplace {
 			if should(existing[k], AnnotationPrune) && should(existing[k], AnnotationCreate) {
-				toDelete = append(toDelete, k)
-				toCreate = append(toCreate, k)
+				toReplace = append(toReplace, k)
 			}
 		} else if err != nil {
 			return fmt.Errorf("failed to update %s %s for %s: %w", k, gvk, debugID, err)
@@ -249,7 +249,6 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	for _, k := range toCreate {
 		errs = append(errs, createF(k))
 	}
-	toCreate = nil
 
 	for _, k := range toUpdate {
 		errs = append(errs, updateF(k))
@@ -261,7 +260,11 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		}
 	}
 
-	for _, k := range toCreate {
+	for _, k := range toReplace {
+		errs = append(errs, deleteF(k, false))
+	}
+
+	for _, k := range toReplace {
 		errs = append(errs, createF(k))
 	}
 
