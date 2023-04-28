@@ -42,6 +42,9 @@ func (f FinalizerHandler) Handle(req Request, resp Response) error {
 	if newResp.Delay != 0 {
 		resp.RetryAfter(newResp.Delay)
 	}
+	if newResp.NoPrune {
+		resp.DisablePrune()
+	}
 
 	for _, respObj := range newResp.Objs {
 		if isObjectForRequest(req, respObj) {
