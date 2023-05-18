@@ -2,10 +2,10 @@ package baaah
 
 import (
 	"github.com/acorn-io/baaah/pkg/backend"
-	"github.com/acorn-io/baaah/pkg/lasso"
 	"github.com/acorn-io/baaah/pkg/leader"
 	"github.com/acorn-io/baaah/pkg/restconfig"
 	"github.com/acorn-io/baaah/pkg/router"
+	bruntime "github.com/acorn-io/baaah/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
@@ -33,7 +33,7 @@ func (o *Options) complete(scheme *runtime.Scheme) (*Options, error) {
 			}
 		}
 
-		backend, err := lasso.NewRuntimeForNamespace(o.RESTConfig, o.Namespace, scheme)
+		backend, err := bruntime.NewRuntimeForNamespace(o.RESTConfig, o.Namespace, scheme)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +50,7 @@ func DefaultOptions(routerName string, scheme *runtime.Scheme) (*Options, error)
 	if err != nil {
 		return nil, err
 	}
-	rt, err := lasso.NewRuntimeForNamespace(cfg, "", scheme)
+	rt, err := bruntime.NewRuntimeForNamespace(cfg, "", scheme)
 	if err != nil {
 		return nil, err
 	}

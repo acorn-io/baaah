@@ -6,8 +6,8 @@ import (
 	"sort"
 
 	"github.com/acorn-io/baaah/pkg/apply/objectset"
+	"github.com/acorn-io/baaah/pkg/log"
 	"github.com/acorn-io/baaah/pkg/merr"
-	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -221,7 +221,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 			return fmt.Errorf("failed to create %s %s for %s: %w", k, gvk, debugID, err)
 		}
 
-		logrus.Debugf("DesiredSet - Created %s %s for %s", gvk, k, debugID)
+		log.Debugf("DesiredSet - Created %s %s for %s", gvk, k, debugID)
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 		if err := a.delete(gvk, k.Namespace, k.Name); err != nil {
 			return fmt.Errorf("failed to delete %s %s for %s: %w", k, gvk, debugID, err)
 		}
-		logrus.Debugf("DesiredSet - DeleteStrategy %s %s for %s", gvk, k, debugID)
+		log.Debugf("DesiredSet - DeleteStrategy %s %s for %s", gvk, k, debugID)
 		return nil
 	}
 

@@ -44,8 +44,8 @@ func (c *Client) getClient(obj runtime.Object) kclient.WithWatch {
 	return c.defaultClient
 }
 
-func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object) error {
-	return c.getClient(obj).Get(ctx, key, obj)
+func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object, opts ...kclient.GetOption) error {
+	return c.getClient(obj).Get(ctx, key, obj, opts...)
 }
 
 func (c *Client) List(ctx context.Context, list kclient.ObjectList, opts ...kclient.ListOption) error {
@@ -72,8 +72,15 @@ func (c *Client) DeleteAllOf(ctx context.Context, obj kclient.Object, opts ...kc
 	return c.getClient(obj).DeleteAllOf(ctx, obj, opts...)
 }
 
-func (c *Client) Status() kclient.StatusWriter {
+func (c *Client) Status() kclient.SubResourceWriter {
 	return &StatusWriter{c}
+}
+
+func (c *Client) SubResource(subResource string) kclient.SubResourceClient {
+	return &SubResourceClient{
+		subResource: subResource,
+		c:           c,
+	}
 }
 
 func (c *Client) Scheme() *runtime.Scheme {
@@ -88,14 +95,47 @@ func (c *Client) Watch(ctx context.Context, obj kclient.ObjectList, opts ...kcli
 	return c.getClient(obj).Watch(ctx, obj, opts...)
 }
 
+func (c *Client) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return c.getClient(obj).GroupVersionKindFor(obj)
+}
+
+func (c *Client) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return c.getClient(obj).IsObjectNamespaced(obj)
+}
+
+type SubResourceClient struct {
+	subResource string
+	c           *Client
+}
+
+func (s SubResourceClient) Get(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceGetOption) error {
+	return s.c.getClient(obj).SubResource(s.subResource).Get(ctx, obj, subResource, opts...)
+}
+
+func (s SubResourceClient) Create(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceCreateOption) error {
+	return s.c.getClient(obj).SubResource(s.subResource).Create(ctx, obj, subResource, opts...)
+}
+
+func (s SubResourceClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.SubResourceUpdateOption) error {
+	return s.c.getClient(obj).SubResource(s.subResource).Update(ctx, obj, opts...)
+}
+
+func (s SubResourceClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.SubResourcePatchOption) error {
+	return s.c.getClient(obj).SubResource(s.subResource).Patch(ctx, obj, patch, opts...)
+}
+
 type StatusWriter struct {
 	c *Client
 }
 
-func (s *StatusWriter) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
+func (s *StatusWriter) Create(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceCreateOption) error {
+	return s.c.getClient(obj).Status().Create(ctx, obj, subResource, opts...)
+}
+
+func (s *StatusWriter) Update(ctx context.Context, obj kclient.Object, opts ...kclient.SubResourceUpdateOption) error {
 	return s.c.getClient(obj).Status().Update(ctx, obj, opts...)
 }
 
-func (s *StatusWriter) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
+func (s *StatusWriter) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.SubResourcePatchOption) error {
 	return s.c.getClient(obj).Status().Patch(ctx, obj, patch, opts...)
 }

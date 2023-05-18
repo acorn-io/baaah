@@ -74,8 +74,9 @@ func (w *writer) Create(ctx context.Context, obj kclient.Object, opts ...kclient
 	return w.client.Create(ctx, obj, opts...)
 }
 
-type statusClient struct {
-	client   kclient.Client
+type subResourceClient struct {
+	writer   kclient.SubResourceWriter
+	reader   kclient.SubResourceReader
 	registry TriggerRegistry
 }
 
@@ -85,24 +86,39 @@ type status struct {
 }
 
 func (s *status) Status() kclient.StatusWriter {
-	return &statusClient{
-		client:   s.client,
+	return &subResourceClient{
+		writer:   s.client.Status(),
 		registry: s.registry,
 	}
 }
 
-func (s *statusClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
+func (s *subResourceClient) Get(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceGetOption) error {
 	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
-	return s.client.Status().Update(ctx, obj, opts...)
+
+	return s.reader.Get(ctx, obj, subResource, opts...)
 }
 
-func (s *statusClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
+func (s *subResourceClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.SubResourceUpdateOption) error {
 	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
 		return err
 	}
-	return s.client.Status().Patch(ctx, obj, patch, opts...)
+	return s.writer.Update(ctx, obj, opts...)
+}
+
+func (s *subResourceClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.SubResourcePatchOption) error {
+	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
+		return err
+	}
+	return s.writer.Patch(ctx, obj, patch, opts...)
+}
+
+func (s *subResourceClient) Create(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceCreateOption) error {
+	if err := s.registry.Watch(obj, obj.GetNamespace(), obj.GetName(), nil, nil); err != nil {
+		return err
+	}
+	return s.writer.Create(ctx, obj, subResource, opts...)
 }
 
 type reader struct {
@@ -111,12 +127,29 @@ type reader struct {
 	registry TriggerRegistry
 }
 
-func (a *reader) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object) error {
+func (a *reader) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return a.client.GroupVersionKindFor(obj)
+}
+
+func (a *reader) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return a.client.IsObjectNamespaced(obj)
+}
+
+func (a *reader) SubResource(subResource string) kclient.SubResourceClient {
+	c := a.client.SubResource(subResource)
+	return &subResourceClient{
+		writer:   c,
+		reader:   c,
+		registry: a.registry,
+	}
+}
+
+func (a *reader) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object, opts ...kclient.GetOption) error {
 	if err := a.registry.Watch(obj, key.Namespace, key.Name, nil, nil); err != nil {
 		return err
 	}
 
-	return a.client.Get(ctx, key, obj)
+	return a.client.Get(ctx, key, obj, opts...)
 }
 
 func (a *reader) List(ctx context.Context, list kclient.ObjectList, opts ...kclient.ListOption) error {

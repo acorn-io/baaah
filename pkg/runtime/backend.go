@@ -1,4 +1,4 @@
-package lasso
+package runtime
 
 import (
 	"context"
@@ -11,8 +11,6 @@ import (
 	"github.com/acorn-io/baaah/pkg/fields"
 	"github.com/acorn-io/baaah/pkg/router"
 	"github.com/acorn-io/baaah/pkg/uncached"
-	controllerruntime "github.com/rancher/lasso/controller-runtime"
-	"github.com/rancher/lasso/pkg/controller"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kcache "k8s.io/client-go/tools/cache"
@@ -24,12 +22,12 @@ import (
 type Backend struct {
 	*cacheClient
 
-	cacheFactory controller.SharedControllerFactory
+	cacheFactory SharedControllerFactory
 	cache        cache.Cache
 	started      atomic.Bool
 }
 
-func newBackend(cacheFactory controller.SharedControllerFactory, client *cacheClient, cache cache.Cache) *Backend {
+func newBackend(cacheFactory SharedControllerFactory, client *cacheClient, cache cache.Cache) *Backend {
 	return &Backend{
 		cacheClient:  client,
 		cacheFactory: cacheFactory,
@@ -46,11 +44,6 @@ func (b *Backend) Start(ctx context.Context) (err error) {
 	if err := b.cacheFactory.Start(ctx, 5); err != nil {
 		return err
 	}
-	go func() {
-		if err := b.cache.Start(ctx); err != nil {
-			panic(err)
-		}
-	}()
 	if !b.cache.WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
@@ -87,12 +80,8 @@ func (b *Backend) addIndexer(ctx context.Context, gvk schema.GroupVersionKind) e
 	if !ok {
 		return nil
 	}
-	caches := b.cacheFactory.SharedCacheFactory().WaitForCacheSync(ctx)
-	if caches[gvk] {
-		return nil
-	}
 
-	cache, err := b.cacheFactory.SharedCacheFactory().ForKind(gvk)
+	cache, err := b.cache.GetInformerForKind(ctx, gvk)
 	if err != nil {
 		return err
 	}
@@ -109,9 +98,9 @@ func (b *Backend) addIndexer(ctx context.Context, gvk schema.GroupVersionKind) e
 			if v == "" {
 				return nil, nil
 			}
-			vals := []string{controllerruntime.KeyToNamespacedKey("", v)}
+			vals := []string{keyFunc("", v)}
 			if ko, ok := obj.(kclient.Object); ok && ko.GetNamespace() != "" {
-				vals = append(vals, controllerruntime.KeyToNamespacedKey(ko.GetNamespace(), v))
+				vals = append(vals, keyFunc(ko.GetNamespace(), v))
 			}
 			return vals, nil
 		})
@@ -127,7 +116,7 @@ func (b *Backend) Watch(ctx context.Context, gvk schema.GroupVersionKind, name s
 	if err := b.addIndexer(ctx, gvk); err != nil {
 		return err
 	}
-	handler := controller.SharedControllerHandlerFunc(func(key string, obj runtime.Object) (runtime.Object, error) {
+	handler := SharedControllerHandlerFunc(func(key string, obj runtime.Object) (runtime.Object, error) {
 		return cb(gvk, key, obj)
 	})
 	c.RegisterHandler(ctx, fmt.Sprintf("%s %v", name, gvk), handler)
@@ -138,10 +127,22 @@ func (b *Backend) Watch(ctx context.Context, gvk schema.GroupVersionKind, name s
 	return nil
 }
 
+func (b *Backend) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return b.uncached.GroupVersionKindFor(obj)
+}
+
+func (b *Backend) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return b.uncached.IsObjectNamespaced(obj)
+}
+
 func (b *Backend) GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error) {
 	return apiutil.GVKForObject(uncached.Unwrap(obj), scheme)
 }
 
 func (b *Backend) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (kcache.SharedIndexInformer, error) {
-	return b.cacheFactory.SharedCacheFactory().ForKind(gvk)
+	i, err := b.cache.GetInformerForKind(ctx, gvk)
+	if err != nil {
+		return nil, err
+	}
+	return i.(kcache.SharedIndexInformer), nil
 }

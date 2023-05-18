@@ -32,7 +32,7 @@ func (c Client) objects() []kclient.Object {
 	return append(append(c.Objects, c.Created...), c.Updated...)
 }
 
-func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, out kclient.Object) error {
+func (c *Client) Get(ctx context.Context, key kclient.ObjectKey, out kclient.Object, opts ...kclient.GetOption) error {
 	if u, ok := out.(*uncached.Holder); ok {
 		out = u.Object
 	}
@@ -193,11 +193,25 @@ func (c *Client) Status() kclient.StatusWriter {
 	panic("implement me")
 }
 
+func (c *Client) SubResource(subResource string) kclient.SubResourceClient {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (c *Client) Scheme() *runtime.Scheme {
 	return c.SchemeObj
 }
 
 func (c *Client) RESTMapper() meta2.RESTMapper {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return apiutil.GVKForObject(obj, c.SchemeObj)
+}
+
+func (c *Client) IsObjectNamespaced(obj runtime.Object) (bool, error) {
 	//TODO implement me
 	panic("implement me")
 }

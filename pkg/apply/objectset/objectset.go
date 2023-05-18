@@ -134,23 +134,23 @@ func (o *ObjectSet) GVKOrder(known ...schema.GroupVersionKind) []schema.GroupVer
 
 // Namespaces all distinct namespaces found on the objects in this set.
 func (o *ObjectSet) Namespaces() []string {
-	namespaces := sets.String{}
+	namespaces := sets.New[string]()
 	for _, objsByKey := range o.ObjectsByGVK() {
 		for objKey := range objsByKey {
 			namespaces.Insert(objKey.Namespace)
 		}
 	}
-	return namespaces.List()
+	return sets.List(namespaces)
 }
 
 type ObjectByKey map[ObjectKey]kclient.Object
 
 func (o ObjectByKey) Namespaces() []string {
-	namespaces := sets.String{}
+	namespaces := sets.New[string]()
 	for objKey := range o {
 		namespaces.Insert(objKey.Namespace)
 	}
-	return namespaces.List()
+	return sets.List(namespaces)
 }
 
 type ObjectByGK map[schema.GroupKind]map[ObjectKey]kclient.Object
