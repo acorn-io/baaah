@@ -9,9 +9,9 @@ import (
 
 	"github.com/acorn-io/baaah/pkg/apply"
 	"github.com/acorn-io/baaah/pkg/backend"
+	"github.com/acorn-io/baaah/pkg/log"
 	"github.com/acorn-io/baaah/pkg/merr"
 	"github.com/moby/locker"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
 	"golang.org/x/time/rate"
 	apierror "k8s.io/apimachinery/pkg/api/errors"
@@ -217,7 +217,7 @@ func (m *HandlerSet) checkDelay(gvk schema.GroupVersionKind, key string) bool {
 		}
 		m.waiting[lKey] = struct{}{}
 		go func() {
-			logrus.Warnf("Backing off [%s] [%s] for %s", key, gvk, delay)
+			log.Warnf("Backing off [%s] [%s] for %s", key, gvk, delay)
 			time.Sleep(delay)
 			m.limiterLock.Lock()
 			defer m.limiterLock.Unlock()
@@ -301,9 +301,9 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	handles := m.handlers.Handles(req)
 	if handles {
 		if req.FromTrigger {
-			logrus.Infof("Handling trigger [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
+			log.Infof("Handling trigger [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
 		} else {
-			logrus.Infof("Handling [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
+			log.Infof("Handling [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
 		}
 
 		if err := m.handlers.Handle(req, resp); err != nil {

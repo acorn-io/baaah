@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/acorn-io/baaah/pkg/data"
-	"github.com/sirupsen/logrus"
+	"github.com/acorn-io/baaah/pkg/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -208,7 +208,7 @@ func (a *apply) applyPatch(gvk schema.GroupVersionKind, debugID string, oldObjec
 		return false, nil
 	}
 
-	logrus.Debugf("DesiredSet - Patch %s %s/%s for %s -- [PATCH:%s, ORIGINAL:%s, MODIFIED:%s, CURRENT:%s]", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patch, original, modified, current)
+	log.Debugf("DesiredSet - Patch %s %s/%s for %s -- [PATCH:%s, ORIGINAL:%s, MODIFIED:%s, CURRENT:%s]", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patch, original, modified, current)
 	reconciler := a.reconcilers[gvk]
 	if reconciler != nil {
 		newObject, err := prepareObjectForCreate(gvk, newObject, true)
@@ -237,7 +237,7 @@ func (a *apply) applyPatch(gvk schema.GroupVersionKind, debugID string, oldObjec
 	ustr.SetNamespace(oldObject.GetNamespace())
 	ustr.SetName(oldObject.GetName())
 
-	logrus.Debugf("DesiredSet - Updated %s %s/%s for %s -- %s %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patchType, patch)
+	log.Debugf("DesiredSet - Updated %s %s/%s for %s -- %s %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID, patchType, patch)
 	a.log("patching", gvk, oldObject)
 	if a.ensure {
 		newObject.SetResourceVersion(oldObject.GetResourceVersion())
@@ -259,7 +259,7 @@ func (a *apply) compareObjects(gvk schema.GroupVersionKind, debugID string, oldO
 			}
 			reflect.Indirect(dstVal).Set(reflect.Indirect(srcVal))
 		}
-		logrus.Debugf("DesiredSet - No change(2) %s %s/%s for %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID)
+		log.Debugf("DesiredSet - No change(2) %s %s/%s for %s", gvk, oldObject.GetNamespace(), oldObject.GetName(), debugID)
 	}
 
 	return nil
@@ -421,7 +421,7 @@ func createPatch(gvk schema.GroupVersionKind, original, modified, current []byte
 	}
 
 	if err != nil {
-		logrus.Errorf("Failed to calcuated patch: %v", err)
+		log.Errorf("Failed to calcuated patch: %v", err)
 	}
 
 	return patchType, patch, err

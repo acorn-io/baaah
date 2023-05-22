@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/acorn-io/baaah/pkg/log"
 	"github.com/acorn-io/baaah/pkg/typed"
-	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta2 "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,11 +95,11 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		done, lastRevision, err, terminalErr := doWatch(ctx, revision, watchFunc, newCB)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "context canceled") {
-				logrus.Errorf("error while watching type %T, %T: %v", o, cb, err)
+				log.Errorf("error while watching type %T, %T: %v", o, cb, err)
 			}
 		} else if terminalErr != nil {
 			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) && !strings.Contains(terminalErr.Error(), "context canceled") {
-				logrus.Errorf("terminal error while watching type %T cb[%T]: %v", o, cb, terminalErr)
+				log.Errorf("terminal error while watching type %T cb[%T]: %v", o, cb, terminalErr)
 			}
 			return last, terminalErr
 		} else if done {
@@ -108,7 +108,7 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		if lastRevision != "" {
 			revision = lastRevision
 		}
-		logrus.Debugf("no error, going to restart watch %T, %T from revision %s", o, cb, revision)
+		log.Debugf("no error, going to restart watch %T, %T from revision %s", o, cb, revision)
 		select {
 		case <-ctx.Done():
 			return last, ctx.Err()

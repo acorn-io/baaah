@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/acorn-io/baaah/pkg/log"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -100,7 +100,7 @@ func (ec ElectionConfig) run(ctx context.Context, cb Callback) error {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				if err := cb(ctx); err != nil {
-					logrus.Fatalf("leader callback error: %v", err)
+					log.Fatalf("leader callback error: %v", err)
 				}
 			},
 			OnStoppedLeading: func() {
@@ -117,10 +117,10 @@ func (ec ElectionConfig) run(ctx context.Context, cb Callback) error {
 					// complete so that everything comes back up correctly after
 					// a restart.
 					// The pattern found here can be found inside the kube-scheduler.
-					logrus.Info("requested to terminate, exiting")
+					log.Infof("requested to terminate, exiting")
 					os.Exit(0)
 				default:
-					logrus.Fatalf("leader election lost for %s", ec.Name)
+					log.Fatalf("leader election lost for %s", ec.Name)
 				}
 			},
 		},

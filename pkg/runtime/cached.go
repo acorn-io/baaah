@@ -1,4 +1,4 @@
-package lasso
+package runtime
 
 import (
 	"context"
@@ -110,9 +110,9 @@ func (c *cacheClient) store(obj kclient.Object) {
 	c.recentLock.Unlock()
 }
 
-func (c *cacheClient) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object) error {
+func (c *cacheClient) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object, opts ...kclient.GetOption) error {
 	if u, ok := obj.(*uncached.Holder); ok {
-		return c.uncached.Get(ctx, key, u.Object)
+		return c.uncached.Get(ctx, key, u.Object, opts...)
 	}
 
 	err := c.cached.Get(ctx, key, obj)
@@ -188,10 +188,19 @@ func (c *cacheClient) DeleteAllOf(ctx context.Context, obj kclient.Object, opts 
 	return c.cached.DeleteAllOf(ctx, obj, opts...)
 }
 
-func (c *cacheClient) Status() kclient.StatusWriter {
-	return &statusWriter{
+func (c *cacheClient) SubResource(subResource string) kclient.SubResourceClient {
+	client := c.cached.SubResource(subResource)
+	return &subResourceClient{
 		c:      c,
-		status: c.cached.Status(),
+		reader: client,
+		writer: client,
+	}
+}
+
+func (c *cacheClient) Status() kclient.StatusWriter {
+	return &subResourceClient{
+		c:      c,
+		writer: c.cached.Status(),
 	}
 }
 
@@ -203,13 +212,22 @@ func (c *cacheClient) RESTMapper() meta.RESTMapper {
 	return c.cached.RESTMapper()
 }
 
-type statusWriter struct {
+type subResourceClient struct {
 	c      *cacheClient
-	status kclient.StatusWriter
+	writer kclient.SubResourceWriter
+	reader kclient.SubResourceReader
 }
 
-func (s *statusWriter) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
-	err := s.status.Update(ctx, obj, opts...)
+func (s *subResourceClient) Get(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceGetOption) error {
+	return s.reader.Get(ctx, obj, subResource, opts...)
+}
+
+func (s *subResourceClient) Create(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceCreateOption) error {
+	return s.writer.Create(ctx, obj, subResource, opts...)
+}
+
+func (s *subResourceClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.SubResourceUpdateOption) error {
+	err := s.writer.Update(ctx, obj, opts...)
 	if err != nil {
 		return err
 	}
@@ -217,8 +235,8 @@ func (s *statusWriter) Update(ctx context.Context, obj kclient.Object, opts ...k
 	return nil
 }
 
-func (s *statusWriter) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
-	err := s.status.Patch(ctx, obj, patch, opts...)
+func (s *subResourceClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.SubResourcePatchOption) error {
+	err := s.writer.Patch(ctx, obj, patch, opts...)
 	if err != nil {
 		return err
 	}
