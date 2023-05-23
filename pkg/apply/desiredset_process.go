@@ -236,7 +236,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	updateF := func(k objectset.ObjectKey) error {
 		err := a.compareObjects(gvk, debugID, existing[k], objs[k])
 		if err == ErrReplace {
-			if should(existing[k], AnnotationPrune) && should(existing[k], AnnotationCreate) {
+			if objs[k].GetAnnotations()[AnnotationUpdate] == "true" || (should(existing[k], AnnotationPrune) && should(existing[k], AnnotationCreate)) {
 				toReplace = append(toReplace, k)
 			}
 		} else if err != nil {
