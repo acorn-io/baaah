@@ -25,10 +25,12 @@ type SharedControllerFactoryOptions struct {
 
 type sharedControllerFactory struct {
 	controllerLock sync.RWMutex
+	cacheStartLock sync.Mutex
 
-	cache       cache.Cache
-	client      kclient.Client
-	controllers map[schema.GroupVersionKind]*sharedController
+	cache        cache.Cache
+	cacheStarted bool
+	client       kclient.Client
+	controllers  map[schema.GroupVersionKind]*sharedController
 
 	rateLimiter     workqueue.RateLimiter
 	workers         int
@@ -65,9 +67,15 @@ func (s *sharedControllerFactory) Start(ctx context.Context, defaultWorkers int)
 	defer s.controllerLock.Unlock()
 
 	go func() {
+		s.cacheStartLock.Lock()
+		defer s.cacheStartLock.Unlock()
+		if s.cacheStarted {
+			return
+		}
 		if err := s.cache.Start(ctx); err != nil {
 			panic(err)
 		}
+		s.cacheStarted = true
 	}()
 
 	// copy so we can release the lock during cache wait

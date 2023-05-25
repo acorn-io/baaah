@@ -3,8 +3,10 @@ module github.com/acorn-io/baaah
 go 1.19
 
 require (
+	github.com/bombsimon/logrusr/v4 v4.0.0
 	github.com/google/uuid v1.3.0
 	github.com/moby/locker v1.0.1
+	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/time v0.3.0
