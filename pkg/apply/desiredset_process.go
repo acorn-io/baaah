@@ -80,7 +80,7 @@ func (a *apply) assignOwnerReference(gvk schema.GroupVersionKind, objs objectset
 			}
 		}
 
-		if shouldSet && ownerMeta.GetUID() != "" {
+		if shouldSet && ownerMeta.GetUID() != "" && should(v, AnnotationPrune) {
 			v.SetOwnerReferences(append(v.GetOwnerReferences(), metav1.OwnerReference{
 				APIVersion:         ownerGVK.GroupVersion().String(),
 				Kind:               ownerGVK.Kind,

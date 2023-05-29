@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/acorn-io/baaah/pkg/randomtoken"
 	"github.com/acorn-io/baaah/pkg/uncached"
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
@@ -123,7 +122,7 @@ func (c *Client) List(ctx context.Context, objList kclient.ObjectList, opts ...k
 func (c *Client) Create(ctx context.Context, obj kclient.Object, opts ...kclient.CreateOption) error {
 	obj.SetUID(types.UID(uuid.New().String()))
 	if obj.GetName() == "" && obj.GetGenerateName() != "" {
-		r, err := randomtoken.Generate()
+		r, err := generate(obj)
 		if err != nil {
 			return err
 		}

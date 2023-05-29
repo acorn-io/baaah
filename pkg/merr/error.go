@@ -10,6 +10,10 @@ func (e Errors) Err() error {
 	return NewErrors(e...)
 }
 
+func (e Errors) Unwrap() []error {
+	return e
+}
+
 func (e Errors) Error() string {
 	buf := &strings.Builder{}
 	for _, err := range e {
