@@ -376,11 +376,11 @@ func should(obj kclient.Object, label string) bool {
 func compareSets(existingSet, newSet objectset.ObjectByKey) (toCreate, toDelete, toUpdate []objectset.ObjectKey) {
 	for k, obj := range newSet {
 		if _, ok := existingSet[k]; ok {
-			if should(obj, AnnotationCreate) {
+			if should(obj, AnnotationUpdate) {
 				toUpdate = append(toUpdate, k)
 			}
 		} else {
-			if should(obj, AnnotationUpdate) {
+			if should(obj, AnnotationCreate) {
 				toCreate = append(toCreate, k)
 			}
 		}
