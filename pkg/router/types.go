@@ -57,6 +57,7 @@ func (r *Request) Get(object kclient.Object, namespace, name string) error {
 
 type Response interface {
 	DisablePrune()
+	WithoutPruneGVKs(gvks ...schema.GroupVersionKind)
 	RetryAfter(delay time.Duration)
 	Objects(obj ...kclient.Object)
 }

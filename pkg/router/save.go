@@ -29,6 +29,10 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 	apply := s.apply.
 		WithPruneGVKs(watchingGVKS...)
 
+	if len(resp.noPruneGVKs) > 0 {
+		apply = apply.WithNoPruneGVKs(resp.noPruneGVKs...)
+	}
+
 	// Special case the situation where there are no objects and a retry later is set.
 	// In this situation don't purge all the objects previously created
 	if resp.noPrune || len(resp.objects) == 0 && resp.delay > 0 {
