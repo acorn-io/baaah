@@ -342,19 +342,19 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 }
 
 type response struct {
-	delay       time.Duration
-	objects     []kclient.Object
-	registry    TriggerRegistry
-	noPrune     bool
-	noPruneGVKs []schema.GroupVersionKind
+	delay             time.Duration
+	objects           []kclient.Object
+	registry          TriggerRegistry
+	noPrune           bool
+	disabledPruneGVKs []schema.GroupVersionKind
 }
 
 func (r *response) DisablePrune() {
 	r.noPrune = true
 }
 
-func (r *response) WithoutPruneGVKs(gvks ...schema.GroupVersionKind) {
-	r.noPruneGVKs = append(r.noPruneGVKs, gvks...)
+func (r *response) DisablePruningForGVKs(gvks ...schema.GroupVersionKind) {
+	r.disabledPruneGVKs = append(r.disabledPruneGVKs, gvks...)
 }
 
 func (r *response) RetryAfter(delay time.Duration) {

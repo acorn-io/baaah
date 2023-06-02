@@ -57,7 +57,11 @@ func (r *Request) Get(object kclient.Object, namespace, name string) error {
 
 type Response interface {
 	DisablePrune()
-	WithoutPruneGVKs(gvks ...schema.GroupVersionKind)
+
+	// DisablePruningForGVKs prevents the objects matching the provided GVKs from being pruned by the Apply.
+	// This can be overridden by adding the apply.acorn.io/prune="true" annotation to the object.
+	DisablePruningForGVKs(gvks ...schema.GroupVersionKind)
+
 	RetryAfter(delay time.Duration)
 	Objects(obj ...kclient.Object)
 }
