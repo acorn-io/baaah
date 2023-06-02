@@ -90,10 +90,10 @@ func (a apply) withPruneGVKs(gvks ...schema.GroupVersionKind) apply {
 }
 
 func (a apply) WithNoPruneGVKs(gvks ...schema.GroupVersionKind) Apply {
-	return a.withNoPruneGVKs(gvks...)
+	return a.withNoPruneGVKs(gvks)
 }
 
-func (a apply) withNoPruneGVKs(gvks ...schema.GroupVersionKind) apply {
+func (a apply) withNoPruneGVKs(gvks []schema.GroupVersionKind) apply {
 	noPruneTypes := make(map[schema.GroupVersionKind]bool, len(gvks))
 	for k, v := range a.noPruneTypes {
 		noPruneTypes[k] = v
