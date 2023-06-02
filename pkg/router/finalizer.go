@@ -45,9 +45,7 @@ func (f FinalizerHandler) Handle(req Request, resp Response) error {
 	if newResp.NoPrune {
 		resp.DisablePrune()
 	}
-	if len(newResp.NoPruneGVKs) > 0 {
-		resp.WithoutPruneGVKs(newResp.NoPruneGVKs...)
-	}
+	resp.WithoutPruneGVKs(newResp.NoPruneGVKs...)
 
 	for _, respObj := range newResp.Objs {
 		if isObjectForRequest(req, respObj) {

@@ -257,11 +257,11 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 	if !a.noPrune {
 		for _, k := range toDelete {
 			var pruneAnnotation string
-			if objToDelete := existing[k]; objToDelete != nil && objToDelete.GetAnnotations() != nil {
+			if objToDelete := existing[k]; objToDelete != nil {
 				pruneAnnotation = objToDelete.GetAnnotations()[AnnotationPrune]
 			}
 
-			if disabled := a.noPruneTypes[gvk]; !disabled || pruneAnnotation == "true" {
+			if !a.noPruneTypes[gvk] || pruneAnnotation == "true" {
 				errs = append(errs, deleteF(k, false))
 			}
 		}
