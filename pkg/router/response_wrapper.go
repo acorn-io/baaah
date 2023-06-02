@@ -8,18 +8,18 @@ import (
 )
 
 type ResponseWrapper struct {
-	NoPrune     bool
-	NoPruneGVKs []schema.GroupVersionKind
-	Delay       time.Duration
-	Objs        []kclient.Object
+	NoPrune           bool
+	DisabledPruneGVKs []schema.GroupVersionKind
+	Delay             time.Duration
+	Objs              []kclient.Object
 }
 
 func (r *ResponseWrapper) DisablePrune() {
 	r.NoPrune = true
 }
 
-func (r *ResponseWrapper) WithoutPruneGVKs(gvks ...schema.GroupVersionKind) {
-	r.NoPruneGVKs = append(r.NoPruneGVKs, gvks...)
+func (r *ResponseWrapper) DisablePruningForGVKs(gvks ...schema.GroupVersionKind) {
+	r.DisabledPruneGVKs = append(r.DisabledPruneGVKs, gvks...)
 }
 
 func (r *ResponseWrapper) RetryAfter(delay time.Duration) {

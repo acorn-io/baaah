@@ -30,7 +30,11 @@ type Apply interface {
 	WithOwnerSubContext(ownerSubContext string) Apply
 	WithNamespace(ns string) Apply
 	WithPruneGVKs(gvks ...schema.GroupVersionKind) Apply
-	WithNoPruneGVKs(gvks ...schema.GroupVersionKind) Apply
+
+	// DisablePruningForGVKs prevents objects that match one of the provided GVKs from being pruned by the Apply.
+	// This can be overridden by adding the apply.acorn.io/prune="true" annotation to the object.
+	DisablePruningForGVKs(gvks ...schema.GroupVersionKind) Apply
+
 	WithPruneTypes(gvks ...kclient.Object) Apply
 	WithNoPrune() Apply
 

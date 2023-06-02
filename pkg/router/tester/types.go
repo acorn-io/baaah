@@ -163,7 +163,7 @@ func (r *Response) DisablePrune() {
 	r.NoPrune = true
 }
 
-func (r *Response) WithoutPruneGVKs(gvks ...schema.GroupVersionKind) {
+func (r *Response) DisablePruningForGVKs(gvks ...schema.GroupVersionKind) {
 	r.NoPruneGVKs = append(r.NoPruneGVKs, gvks...)
 }
 

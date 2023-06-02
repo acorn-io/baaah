@@ -261,7 +261,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 				pruneAnnotation = objToDelete.GetAnnotations()[AnnotationPrune]
 			}
 
-			if !a.noPruneTypes[gvk] || pruneAnnotation == "true" {
+			if !a.disabledPruneTypes[gvk] || pruneAnnotation == "true" {
 				errs = append(errs, deleteF(k, false))
 			}
 		}
