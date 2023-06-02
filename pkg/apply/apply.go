@@ -30,6 +30,7 @@ type Apply interface {
 	WithOwnerSubContext(ownerSubContext string) Apply
 	WithNamespace(ns string) Apply
 	WithPruneGVKs(gvks ...schema.GroupVersionKind) Apply
+	WithNoPruneGVKs(gvks ...schema.GroupVersionKind) Apply
 	WithPruneTypes(gvks ...kclient.Object) Apply
 	WithNoPrune() Apply
 

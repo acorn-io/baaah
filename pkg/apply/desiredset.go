@@ -18,6 +18,7 @@ type apply struct {
 	defaultNamespace string
 	listerNamespace  string
 	pruneTypes       map[schema.GroupVersionKind]bool
+	noPruneTypes     map[schema.GroupVersionKind]bool
 	pruneObjects     []kclient.Object
 	reconcilers      map[schema.GroupVersionKind]reconciler
 	ownerSubContext  string
@@ -85,6 +86,22 @@ func (a apply) withPruneGVKs(gvks ...schema.GroupVersionKind) apply {
 		pruneTypes[gvk] = true
 	}
 	a.pruneTypes = pruneTypes
+	return a
+}
+
+func (a apply) WithNoPruneGVKs(gvks ...schema.GroupVersionKind) Apply {
+	return a.withNoPruneGVKs(gvks)
+}
+
+func (a apply) withNoPruneGVKs(gvks []schema.GroupVersionKind) apply {
+	noPruneTypes := make(map[schema.GroupVersionKind]bool, len(gvks))
+	for k, v := range a.noPruneTypes {
+		noPruneTypes[k] = v
+	}
+	for _, gvk := range gvks {
+		noPruneTypes[gvk] = true
+	}
+	a.noPruneTypes = noPruneTypes
 	return a
 }
 

@@ -152,14 +152,19 @@ func (c *Client) Update(ctx context.Context, o kclient.Object, opts ...kclient.U
 }
 
 type Response struct {
-	Delay     time.Duration
-	Collected []kclient.Object
-	Client    *Client
-	NoPrune   bool
+	Delay       time.Duration
+	Collected   []kclient.Object
+	Client      *Client
+	NoPrune     bool
+	NoPruneGVKs []schema.GroupVersionKind
 }
 
 func (r *Response) DisablePrune() {
 	r.NoPrune = true
+}
+
+func (r *Response) WithoutPruneGVKs(gvks ...schema.GroupVersionKind) {
+	r.NoPruneGVKs = append(r.NoPruneGVKs, gvks...)
 }
 
 func (r *Response) RetryAfter(delay time.Duration) {
