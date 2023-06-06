@@ -256,14 +256,7 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 
 	if !a.noPrune {
 		for _, k := range toDelete {
-			var pruneAnnotation string
-			if objToDelete := existing[k]; objToDelete != nil {
-				pruneAnnotation = objToDelete.GetAnnotations()[AnnotationPrune]
-			}
-
-			if !a.disabledPruneTypes[gvk] || pruneAnnotation == "true" {
-				errs = append(errs, deleteF(k, false))
-			}
+			errs = append(errs, deleteF(k, false))
 		}
 	}
 
@@ -395,7 +388,7 @@ func compareSets(existingSet, newSet objectset.ObjectByKey) (toCreate, toDelete,
 
 	for k, obj := range existingSet {
 		if _, ok := newSet[k]; !ok {
-			if should(obj, AnnotationPrune) && obj.GetDeletionTimestamp().IsZero() {
+			if labelHash, ok := obj.GetLabels()[LabelHash]; should(obj, AnnotationPrune) && obj.GetDeletionTimestamp().IsZero() && (!ok || labelHash == objectSetHash(obj.GetAnnotations())) {
 				toDelete = append(toDelete, k)
 			}
 		}

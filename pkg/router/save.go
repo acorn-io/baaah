@@ -27,7 +27,7 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 		owner.SetName(req.Name)
 	}
 	apply := s.apply.
-		WithPruneGVKs(watchingGVKS...).DisablePruningForGVKs(resp.disabledPruneGVKs...)
+		WithPruneGVKs(watchingGVKS...)
 
 	// Special case the situation where there are no objects and a retry later is set.
 	// In this situation don't purge all the objects previously created
