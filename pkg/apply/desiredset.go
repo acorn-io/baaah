@@ -13,19 +13,18 @@ import (
 type reconciler func(oldObj kclient.Object, newObj kclient.Object) (bool, error)
 
 type apply struct {
-	ctx                context.Context
-	client             kclient.Client
-	defaultNamespace   string
-	listerNamespace    string
-	pruneTypes         map[schema.GroupVersionKind]bool
-	disabledPruneTypes map[schema.GroupVersionKind]bool
-	pruneObjects       []kclient.Object
-	reconcilers        map[schema.GroupVersionKind]reconciler
-	ownerSubContext    string
-	owner              kclient.Object
-	ownerGVK           schema.GroupVersionKind
-	ensure             bool
-	noPrune            bool
+	ctx              context.Context
+	client           kclient.Client
+	defaultNamespace string
+	listerNamespace  string
+	pruneTypes       map[schema.GroupVersionKind]bool
+	pruneObjects     []kclient.Object
+	reconcilers      map[schema.GroupVersionKind]reconciler
+	ownerSubContext  string
+	owner            kclient.Object
+	ownerGVK         schema.GroupVersionKind
+	ensure           bool
+	noPrune          bool
 }
 
 func (a apply) Ensure(ctx context.Context, objs ...kclient.Object) error {
@@ -86,22 +85,6 @@ func (a apply) withPruneGVKs(gvks ...schema.GroupVersionKind) apply {
 		pruneTypes[gvk] = true
 	}
 	a.pruneTypes = pruneTypes
-	return a
-}
-
-func (a apply) DisablePruningForGVKs(gvks ...schema.GroupVersionKind) Apply {
-	return a.disablePruningForGVKs(gvks)
-}
-
-func (a apply) disablePruningForGVKs(gvks []schema.GroupVersionKind) apply {
-	disabledPruneTypes := make(map[schema.GroupVersionKind]bool, len(gvks))
-	for k, v := range a.disabledPruneTypes {
-		disabledPruneTypes[k] = v
-	}
-	for _, gvk := range gvks {
-		disabledPruneTypes[gvk] = true
-	}
-	a.disabledPruneTypes = disabledPruneTypes
 	return a
 }
 
