@@ -14,6 +14,7 @@ import (
 
 	"github.com/acorn-io/baaah/pkg/router"
 	"github.com/acorn-io/baaah/pkg/yaml"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,10 +24,11 @@ import (
 )
 
 type Harness struct {
-	Scheme         *runtime.Scheme
-	Existing       []kclient.Object
-	ExpectedOutput []kclient.Object
-	ExpectedDelay  time.Duration
+	Scheme             *runtime.Scheme
+	Existing           []kclient.Object
+	ExpectedOutput     []kclient.Object
+	ExpectedGoldenPath string
+	ExpectedDelay      time.Duration
 }
 
 func genericToTyped(scheme *runtime.Scheme, objs []runtime.Object) ([]kclient.Object, error) {
@@ -109,11 +111,22 @@ func FromDir(scheme *runtime.Scheme, path string) (*Harness, kclient.Object, err
 		return nil, nil, err
 	}
 
+	goldDir := path
+	_, err = os.Stat(filepath.Join(goldDir, "expected.golden"))
+	if os.IsNotExist(err) {
+		if len(expected) > 0 {
+			goldDir = ""
+		}
+	} else if err != nil {
+		return nil, nil, err
+	}
+
 	return &Harness{
-		Scheme:         scheme,
-		Existing:       existing,
-		ExpectedOutput: expected,
-		ExpectedDelay:  0,
+		Scheme:             scheme,
+		Existing:           existing,
+		ExpectedOutput:     expected,
+		ExpectedGoldenPath: goldDir,
+		ExpectedDelay:      0,
 	}, input[0], nil
 }
 
@@ -184,6 +197,22 @@ func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Hand
 	}
 
 	assert.Equal(t, b.ExpectedDelay, resp.Delay)
+
+	if b.ExpectedGoldenPath != "" {
+		var yamls []string
+		for _, o := range resp.Collected {
+			gvk, err := apiutil.GVKForObject(o, b.Scheme)
+			if err != nil {
+				return nil, err
+			}
+			o.GetObjectKind().SetGroupVersionKind(gvk)
+			left, _ := yaml2.Marshal(o)
+
+			left = stripLastTransition(left)
+			yamls = append(yamls, string(left))
+		}
+		autogold.ExpectFile(t, strings.Join(yamls, "\n---\n"), autogold.Dir(b.ExpectedGoldenPath), autogold.Name("expected"))
+	}
 
 	if len(b.ExpectedOutput) == 0 {
 		return &resp, nil
