@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 
@@ -19,15 +20,25 @@ type Router struct {
 	OnErrorHandler ErrorHandler
 	handlers       *HandlerSet
 	electionConfig *leader.ElectionConfig
+	hasHealthz     bool
 }
 
 // New returns a new *Router with given HandlerSet and ElectionConfig. Passing a nil ElectionConfig is valid and results
 // in no leader election for the router.
-func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig) *Router {
+// The healthzPort is the port on which the healthz endpoint will be served. If <= 0, the healthz endpoint will not be
+// served. When creating multiple routers, the first router created with a positive healthzPort will be used.
+// The healthz endpoint is served on /healthz, and will not be started until the router is started.
+func New(handlerSet *HandlerSet, electionConfig *leader.ElectionConfig, healthzPort int) *Router {
 	r := &Router{
 		handlers:       handlerSet,
 		electionConfig: electionConfig,
 	}
+
+	if healthzPort > 0 {
+		setPort(healthzPort)
+		r.hasHealthz = true
+	}
+
 	r.RouteBuilder.router = r
 	return r
 }
@@ -156,12 +167,38 @@ func (r RouteBuilder) Handler(h Handler) {
 }
 
 func (r *Router) Start(ctx context.Context) error {
-	r.handlers.onError = r.OnErrorHandler
-	if r.electionConfig != nil {
-		return r.electionConfig.Run(ctx, r.handlers.Start)
+	id, err := os.Hostname()
+	if err != nil {
+		return err
 	}
 
-	return r.handlers.Start(ctx)
+	if r.hasHealthz {
+		startHealthz(ctx)
+	}
+
+	r.handlers.onError = r.OnErrorHandler
+
+	// It's OK to start the electionConfig even if it's nil.
+	return r.electionConfig.Run(ctx, id, r.startHandlers, func(leader string) {
+		// I am not the leader, so I am healthy until my controllers are started.
+		if r.hasHealthz {
+			setHealthy(r.name, id != leader)
+		}
+	})
+}
+
+// startHandlers gets called when we become the leader or if there is no leader election.
+func (r *Router) startHandlers(ctx context.Context) error {
+	var err error
+	// This is the leader now, so not ready until the controller is started and caches are ready.
+	if r.hasHealthz {
+		setHealthy(r.name, false)
+		defer setHealthy(r.name, err == nil)
+	}
+
+	err = r.handlers.Start(ctx)
+
+	return err
 }
 
 func (r *Router) Handle(objType kclient.Object, h Handler) {
