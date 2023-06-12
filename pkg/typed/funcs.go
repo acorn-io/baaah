@@ -13,3 +13,7 @@ func NewAs[T any, R any]() R {
 	t := reflect.TypeOf(empty)
 	return reflect.New(t.Elem()).Interface().(R)
 }
+
+func Pointer[T any](v T) *T {
+	return &v
+}
