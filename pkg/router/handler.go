@@ -203,7 +203,7 @@ func (m *HandlerSet) checkDelay(gvk schema.GroupVersionKind, key string) bool {
 		// Limit to once every 15 seconds with a burst of 10. This limits the
 		// overall rate at which we can process a key regardless of the key
 		// source (change event, trigger, error re-enqueue)
-		limit = rate.NewLimiter(rate.Limit(1.0/15.0), 10)
+		limit = rate.NewLimiter(rate.Limit(1.0/5), 10)
 		if m.limiters == nil {
 			m.limiters = map[limiterKey]*rate.Limiter{}
 		}
