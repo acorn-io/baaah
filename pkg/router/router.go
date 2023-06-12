@@ -37,16 +37,17 @@ func (r *Router) Backend() backend.Backend {
 }
 
 type RouteBuilder struct {
-	includeRemove bool
-	finalizeID    string
-	router        *Router
-	objType       kclient.Object
-	name          string
-	namespace     string
-	routeName     string
-	middleware    []Middleware
-	sel           labels.Selector
-	fieldSelector fields.Selector
+	includeRemove     bool
+	includeFinalizing bool
+	finalizeID        string
+	router            *Router
+	objType           kclient.Object
+	name              string
+	namespace         string
+	routeName         string
+	middleware        []Middleware
+	sel               labels.Selector
+	fieldSelector     fields.Selector
 }
 
 func (r RouteBuilder) Middleware(m ...Middleware) RouteBuilder {
@@ -76,6 +77,11 @@ func (r RouteBuilder) Name(name string) RouteBuilder {
 
 func (r RouteBuilder) IncludeRemoved() RouteBuilder {
 	r.includeRemove = true
+	return r
+}
+
+func (r RouteBuilder) IncludeFinalizing() RouteBuilder {
+	r.includeFinalizing = true
 	return r
 }
 
@@ -139,7 +145,12 @@ func (r RouteBuilder) Handler(h Handler) {
 			FieldSelector: r.fieldSelector,
 		}
 	}
-	if !r.includeRemove && r.finalizeID == "" {
+	if r.includeFinalizing && !r.includeRemove && r.finalizeID == "" {
+		result = IgnoreNilHandler{
+			Next: result,
+		}
+	}
+	if !r.includeRemove && !r.includeFinalizing && r.finalizeID == "" {
 		result = IgnoreRemoveHandler{
 			Next: result,
 		}
@@ -172,6 +183,17 @@ func (r *Router) Handle(objType kclient.Object, h Handler) {
 func (r *Router) HandleFunc(objType kclient.Object, h HandlerFunc) {
 	r.routeName = name()
 	r.RouteBuilder.Type(objType).Handler(h)
+}
+
+type IgnoreNilHandler struct {
+	Next Handler
+}
+
+func (i IgnoreNilHandler) Handle(req Request, resp Response) error {
+	if req.Object == nil {
+		return nil
+	}
+	return i.Next.Handle(req, resp)
 }
 
 type IgnoreRemoveHandler struct {
