@@ -10,12 +10,16 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+const defaultHealthzPort = 8888
+
 type Options struct {
 	Backend    backend.Backend
 	RESTConfig *rest.Config
 	Namespace  string
 	// ElectionConfig being nil represents no leader election for the router.
 	ElectionConfig *leader.ElectionConfig
+	// Defaults to 8888
+	HealthzPort int
 }
 
 func (o *Options) complete(scheme *runtime.Scheme) (*Options, error) {
@@ -40,6 +44,10 @@ func (o *Options) complete(scheme *runtime.Scheme) (*Options, error) {
 		result.Backend = backend.Backend
 	}
 
+	if result.HealthzPort == 0 {
+		result.HealthzPort = defaultHealthzPort
+	}
+
 	return &result, nil
 }
 
@@ -59,6 +67,7 @@ func DefaultOptions(routerName string, scheme *runtime.Scheme) (*Options, error)
 		Backend:        rt.Backend,
 		RESTConfig:     cfg,
 		ElectionConfig: leader.NewDefaultElectionConfig("", routerName, cfg),
+		HealthzPort:    defaultHealthzPort,
 	}, nil
 }
 
@@ -78,5 +87,5 @@ func NewRouter(handlerName string, scheme *runtime.Scheme, opts *Options) (*rout
 	if err != nil {
 		return nil, err
 	}
-	return router.New(router.NewHandlerSet(handlerName, scheme, opts.Backend), opts.ElectionConfig), nil
+	return router.New(router.NewHandlerSet(handlerName, scheme, opts.Backend), opts.ElectionConfig, opts.HealthzPort), nil
 }
