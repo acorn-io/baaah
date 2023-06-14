@@ -280,6 +280,7 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 
 	if runtimeObject == nil {
 		m.forgetBackoff(gvk, key)
+		defer m.triggers.Unregister(gvk, key, ns, name)
 	}
 
 	return m.handle(gvk, key, runtimeObject, fromTrigger)
@@ -313,7 +314,7 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 		}
 	}
 
-	if err := m.triggers.Trigger(req, resp); err != nil {
+	if err := m.triggers.Trigger(req); err != nil {
 		if err := m.handleError(req, resp, err); err != nil {
 			return nil, err
 		}
