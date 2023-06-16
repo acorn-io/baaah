@@ -16,7 +16,7 @@ import (
 
 type triggers struct {
 	lock      sync.RWMutex
-	matchers  map[schema.GroupVersionKind]map[enqueueTarget][]matcher
+	matchers  map[schema.GroupVersionKind]map[enqueueTarget][]objectMatcher
 	trigger   backend.Trigger
 	gvkLookup backend.Backend
 	scheme    *runtime.Scheme
@@ -42,7 +42,7 @@ func (m *triggers) invokeTriggers(req Request) {
 			continue
 		}
 		for _, matcher := range matchers {
-			if matcher.Match(req.GVK, req.Namespace, req.Name, req.Object) {
+			if matcher.Match(req.Namespace, req.Name, req.Object) {
 				log.Infof("Triggering [%s] [%v] from [%s] [%v]", enqueueTarget.key, enqueueTarget.gvk, req.Key, req.GVK)
 				_ = m.trigger.Trigger(enqueueTarget.gvk, enqueueTarget.key, 0)
 				break
@@ -51,7 +51,7 @@ func (m *triggers) invokeTriggers(req Request) {
 	}
 }
 
-func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK schema.GroupVersionKind, mr matcher) {
+func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK schema.GroupVersionKind, mr objectMatcher) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -61,7 +61,7 @@ func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK s
 	}
 	matchers, ok := m.matchers[targetGVK]
 	if !ok {
-		matchers = map[enqueueTarget][]matcher{}
+		matchers = map[enqueueTarget][]objectMatcher{}
 		m.matchers[targetGVK] = matchers
 	}
 	for _, existing := range matchers[target] {
@@ -72,11 +72,10 @@ func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK s
 	matchers[target] = append(matchers[target], mr)
 }
 
-func (m *triggers) Trigger(req Request) error {
+func (m *triggers) Trigger(req Request) {
 	if !req.FromTrigger {
 		m.invokeTriggers(req)
 	}
-	return nil
 }
 
 func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj runtime.Object, namespace, name string, selector labels.Selector, fields fields.Selector) (schema.GroupVersionKind, bool, error) {
@@ -92,7 +91,7 @@ func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj r
 		gvk.Kind = strings.TrimSuffix(gvk.Kind, "List")
 	}
 
-	m.register(sourceGVK, key, gvk, &objectMatcher{
+	m.register(sourceGVK, key, gvk, objectMatcher{
 		Namespace: namespace,
 		Name:      name,
 		Selector:  selector,
@@ -102,29 +101,35 @@ func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj r
 	return gvk, true, m.watcher.WatchGVK(gvk)
 }
 
-func (m *triggers) Unregister(gvk schema.GroupVersionKind, key, namespace, name string) {
+// UnregisterAndTrigger will unregister all triggers for the object, both as source and target.
+// If a trigger source matches the object exactly, then the trigger will be invoked.
+func (m *triggers) UnregisterAndTrigger(req Request) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	renamingMatchers := map[schema.GroupVersionKind]map[enqueueTarget][]matcher{}
+	remainingMatchers := map[schema.GroupVersionKind]map[enqueueTarget][]objectMatcher{}
 
 	for targetGVK, matchers := range m.matchers {
 		for target, mts := range matchers {
-			if target.gvk == gvk && target.key == key {
+			if target.gvk == req.GVK && target.key == req.Key {
 				// If the target is the GVK and key we are unregistering, then skip it
 				continue
 			}
 			for _, mt := range mts {
-				// If the matcher matches the GVK and key we are unregistering, then skip it
-				if !mt.Match(gvk, namespace, name, nil) {
-					if renamingMatchers[targetGVK] == nil {
-						renamingMatchers[targetGVK] = make(map[enqueueTarget][]matcher)
+				if targetGVK != req.GVK || mt.Namespace != req.Namespace || mt.Name != req.Name {
+					// If the matcher matches the deleted object exactly, then skip the matcher.
+					if remainingMatchers[targetGVK] == nil {
+						remainingMatchers[targetGVK] = make(map[enqueueTarget][]objectMatcher)
 					}
-					renamingMatchers[targetGVK][target] = append(renamingMatchers[targetGVK][target], mt)
+					remainingMatchers[targetGVK][target] = append(remainingMatchers[targetGVK][target], mt)
+				}
+				if targetGVK == req.GVK && mt.Match(req.Namespace, req.Name, req.Object) {
+					log.Infof("Triggering [%s] [%v] from [%s] [%v] on delete", target.key, target.gvk, req.Key, req.GVK)
+					_ = m.trigger.Trigger(target.gvk, target.key, 0)
 				}
 			}
 		}
 	}
 
-	m.matchers = renamingMatchers
+	m.matchers = remainingMatchers
 }

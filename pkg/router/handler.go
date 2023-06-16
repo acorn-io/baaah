@@ -60,7 +60,7 @@ func NewHandlerSet(name string, scheme *runtime.Scheme, backend backend.Backend)
 			handlers: map[schema.GroupVersionKind][]Handler{},
 		},
 		triggers: triggers{
-			matchers:  map[schema.GroupVersionKind]map[enqueueTarget][]matcher{},
+			matchers:  map[schema.GroupVersionKind]map[enqueueTarget][]objectMatcher{},
 			trigger:   backend,
 			gvkLookup: backend,
 			scheme:    scheme,
@@ -280,7 +280,6 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 
 	if runtimeObject == nil {
 		m.forgetBackoff(gvk, key)
-		defer m.triggers.Unregister(gvk, key, ns, name)
 	}
 
 	return m.handle(gvk, key, runtimeObject, fromTrigger)
@@ -314,10 +313,11 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 		}
 	}
 
-	if err := m.triggers.Trigger(req); err != nil {
-		if err := m.handleError(req, resp, err); err != nil {
-			return nil, err
-		}
+	if unmodifiedObject == nil {
+		// A nil object here means tha the object was deleted, so unregister the triggers
+		m.triggers.UnregisterAndTrigger(req)
+	} else {
+		m.triggers.Trigger(req)
 	}
 
 	if handles {
