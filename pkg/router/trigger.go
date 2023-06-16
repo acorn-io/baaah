@@ -51,8 +51,7 @@ func (m *triggers) invokeTriggers(req Request) {
 	}
 }
 
-func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK schema.GroupVersionKind,
-	mr matcher) {
+func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK schema.GroupVersionKind, mr matcher) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -73,7 +72,7 @@ func (m *triggers) register(gvk schema.GroupVersionKind, key string, targetGVK s
 	matchers[target] = append(matchers[target], mr)
 }
 
-func (m *triggers) Trigger(req Request, resp *response) error {
+func (m *triggers) Trigger(req Request) error {
 	if !req.FromTrigger {
 		m.invokeTriggers(req)
 	}
@@ -101,4 +100,31 @@ func (m *triggers) Register(sourceGVK schema.GroupVersionKind, key string, obj r
 	})
 
 	return gvk, true, m.watcher.WatchGVK(gvk)
+}
+
+func (m *triggers) Unregister(gvk schema.GroupVersionKind, key, namespace, name string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	renamingMatchers := map[schema.GroupVersionKind]map[enqueueTarget][]matcher{}
+
+	for targetGVK, matchers := range m.matchers {
+		for target, mts := range matchers {
+			if target.gvk == gvk && target.key == key {
+				// If the target is the GVK and key we are unregistering, then skip it
+				continue
+			}
+			for _, mt := range mts {
+				// If the matcher matches the GVK and key we are unregistering, then skip it
+				if !mt.Match(gvk, namespace, name, nil) {
+					if renamingMatchers[targetGVK] == nil {
+						renamingMatchers[targetGVK] = make(map[enqueueTarget][]matcher)
+					}
+					renamingMatchers[targetGVK][target] = append(renamingMatchers[targetGVK][target], mt)
+				}
+			}
+		}
+	}
+
+	m.matchers = renamingMatchers
 }
