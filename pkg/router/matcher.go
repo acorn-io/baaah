@@ -3,14 +3,8 @@ package router
 import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type matcher interface {
-	Match(gvk schema.GroupVersionKind, ns, name string, obj kclient.Object) bool
-	Equals(m matcher) bool
-}
 
 type objectMatcher struct {
 	Namespace string
@@ -19,33 +13,29 @@ type objectMatcher struct {
 	Fields    fields.Selector
 }
 
-func (o *objectMatcher) Equals(other matcher) bool {
-	otherMatcher, ok := other.(*objectMatcher)
-	if !ok {
+func (o *objectMatcher) Equals(other objectMatcher) bool {
+	if o.Name != other.Name {
 		return false
 	}
-	if o.Name != otherMatcher.Name {
+	if o.Namespace != other.Namespace {
 		return false
 	}
-	if o.Namespace != otherMatcher.Namespace {
+	if (o.Selector == nil) != (other.Selector == nil) {
 		return false
 	}
-	if (o.Selector == nil) != (otherMatcher.Selector == nil) {
+	if o.Selector != nil && o.Selector.String() != other.Selector.String() {
 		return false
 	}
-	if o.Selector != nil && o.Selector.String() != otherMatcher.Selector.String() {
+	if (o.Fields == nil) != (other.Fields == nil) {
 		return false
 	}
-	if (o.Fields == nil) != (otherMatcher.Fields == nil) {
-		return false
-	}
-	if o.Fields != nil && o.Fields.String() != otherMatcher.Fields.String() {
+	if o.Fields != nil && o.Fields.String() != other.Fields.String() {
 		return false
 	}
 	return true
 }
 
-func (o *objectMatcher) Match(gvk schema.GroupVersionKind, ns, name string, obj kclient.Object) bool {
+func (o *objectMatcher) Match(ns, name string, obj kclient.Object) bool {
 	if o.Name != "" {
 		return o.Name == name &&
 			o.Namespace == ns
