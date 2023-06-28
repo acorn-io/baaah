@@ -43,7 +43,7 @@ func (m *triggers) invokeTriggers(req Request) {
 		}
 		for _, matcher := range matchers {
 			if matcher.Match(req.Namespace, req.Name, req.Object) {
-				log.Infof("Triggering [%s] [%v] from [%s] [%v]", enqueueTarget.key, enqueueTarget.gvk, req.Key, req.GVK)
+				log.Debugf("Triggering [%s] [%v] from [%s] [%v]", enqueueTarget.key, enqueueTarget.gvk, req.Key, req.GVK)
 				_ = m.trigger.Trigger(enqueueTarget.gvk, enqueueTarget.key, 0)
 				break
 			}
@@ -124,7 +124,7 @@ func (m *triggers) UnregisterAndTrigger(req Request) {
 					remainingMatchers[targetGVK][target] = append(remainingMatchers[targetGVK][target], mt)
 				}
 				if targetGVK == req.GVK && mt.Match(req.Namespace, req.Name, req.Object) {
-					log.Infof("Triggering [%s] [%v] from [%s] [%v] on delete", target.key, target.gvk, req.Key, req.GVK)
+					log.Debugf("Triggering [%s] [%v] from [%s] [%v] on delete", target.key, target.gvk, req.Key, req.GVK)
 					_ = m.trigger.Trigger(target.gvk, target.key, 0)
 				}
 			}
