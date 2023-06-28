@@ -301,9 +301,9 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	handles := m.handlers.Handles(req)
 	if handles {
 		if req.FromTrigger {
-			log.Infof("Handling trigger [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
+			log.Debugf("Handling trigger [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
 		} else {
-			log.Infof("Handling [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
+			log.Debugf("Handling [%s/%s] [%v]", req.Namespace, req.Name, req.GVK)
 		}
 
 		if err := m.handlers.Handle(req, resp); err != nil {
