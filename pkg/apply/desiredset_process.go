@@ -278,9 +278,9 @@ func isAllowOwnerTransition(existingObj, newObj kclient.Object) bool {
 	existingAnno := existingObj.GetAnnotations()
 	newAnno := newObj.GetAnnotations()
 	return newAnno[LabelSubContext] != "" &&
-		existingAnno[LabelGVK] == newAnno[LabelGVK] &&
-		existingAnno[LabelNamespace] == newAnno[LabelNamespace] &&
-		existingAnno[LabelName] == newAnno[LabelName] &&
+		(existingAnno[LabelGVK] == "" || existingAnno[LabelGVK] == newAnno[LabelGVK]) &&
+		(existingAnno[LabelNamespace] == "" || existingAnno[LabelNamespace] == newAnno[LabelNamespace]) &&
+		(existingAnno[LabelName] == "" || existingAnno[LabelName] == newAnno[LabelName]) &&
 		validOwnerChange[fmt.Sprintf("%s => %s", existingAnno[LabelSubContext], newAnno[LabelSubContext])]
 
 }
