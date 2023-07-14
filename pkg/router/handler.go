@@ -217,7 +217,7 @@ func (m *HandlerSet) checkDelay(gvk schema.GroupVersionKind, key string) bool {
 		}
 		m.waiting[lKey] = struct{}{}
 		go func() {
-			log.Warnf("Backing off [%s] [%s] for %s", key, gvk, delay)
+			log.Debugf("Backing off [%s] [%s] for %s", key, gvk, delay)
 			time.Sleep(delay)
 			m.limiterLock.Lock()
 			defer m.limiterLock.Unlock()
