@@ -13,40 +13,47 @@ import (
 const defaultHealthzPort = 8888
 
 type Options struct {
-	Backend    backend.Backend
-	RESTConfig *rest.Config
-	Namespace  string
+	Backend           backend.Backend
+	DefaultRESTConfig *rest.Config
+	DefaultScheme     *runtime.Scheme
+	DefaultNamespace  string
+	// SpecialConfigs are keyed by an API group. This indicates to the router that all actions on this group should use the
+	// given Config. This is useful for routers that watch different objects on different API servers.
+	SpecialConfigs map[string]bruntime.Config
 	// ElectionConfig being nil represents no leader election for the router.
 	ElectionConfig *leader.ElectionConfig
 	// Defaults to 8888
 	HealthzPort int
 }
 
-func (o *Options) complete(scheme *runtime.Scheme) (*Options, error) {
+func (o *Options) complete() (*Options, error) {
 	var result Options
 	if o != nil {
 		result = *o
 	}
 
-	if result.Backend == nil {
-		if result.RESTConfig == nil {
-			var err error
-			result.RESTConfig, err = restconfig.New(scheme)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		backend, err := bruntime.NewRuntimeForNamespace(o.RESTConfig, o.Namespace, scheme)
-		if err != nil {
-			return nil, err
-		}
-		result.Backend = backend.Backend
-	}
-
 	if result.HealthzPort == 0 {
 		result.HealthzPort = defaultHealthzPort
 	}
+
+	if result.Backend != nil {
+		return &result, nil
+	}
+
+	if result.DefaultRESTConfig == nil {
+		var err error
+		result.DefaultRESTConfig, err = restconfig.New(result.DefaultScheme)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	defaultConfig := bruntime.Config{Rest: result.DefaultRESTConfig, Scheme: result.DefaultScheme, Namespace: result.DefaultNamespace}
+	backend, err := bruntime.NewRuntimeWithConfigs(defaultConfig, result.SpecialConfigs)
+	if err != nil {
+		return nil, err
+	}
+	result.Backend = backend.Backend
 
 	return &result, nil
 }
@@ -64,10 +71,11 @@ func DefaultOptions(routerName string, scheme *runtime.Scheme) (*Options, error)
 	}
 
 	return &Options{
-		Backend:        rt.Backend,
-		RESTConfig:     cfg,
-		ElectionConfig: leader.NewDefaultElectionConfig("", routerName, cfg),
-		HealthzPort:    defaultHealthzPort,
+		Backend:           rt.Backend,
+		DefaultRESTConfig: cfg,
+		DefaultScheme:     scheme,
+		ElectionConfig:    leader.NewDefaultElectionConfig("", routerName, cfg),
+		HealthzPort:       defaultHealthzPort,
 	}, nil
 }
 
@@ -79,13 +87,13 @@ func DefaultRouter(routerName string, scheme *runtime.Scheme) (*router.Router, e
 	if err != nil {
 		return nil, err
 	}
-	return NewRouter(routerName, scheme, opts)
+	return NewRouter(routerName, opts)
 }
 
-func NewRouter(handlerName string, scheme *runtime.Scheme, opts *Options) (*router.Router, error) {
-	opts, err := opts.complete(scheme)
+func NewRouter(handlerName string, opts *Options) (*router.Router, error) {
+	opts, err := opts.complete()
 	if err != nil {
 		return nil, err
 	}
-	return router.New(router.NewHandlerSet(handlerName, scheme, opts.Backend), opts.ElectionConfig, opts.HealthzPort), nil
+	return router.New(router.NewHandlerSet(handlerName, opts.Backend.Scheme(), opts.Backend), opts.ElectionConfig, opts.HealthzPort), nil
 }
