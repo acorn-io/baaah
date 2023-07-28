@@ -17,51 +17,45 @@ type Runtime struct {
 
 type Config struct {
 	Rest      *rest.Config
-	Scheme    *runtime.Scheme
 	Namespace string
 }
 
 func NewRuntime(cfg *rest.Config, scheme *runtime.Scheme) (*Runtime, error) {
-	return NewRuntimeWithConfig(Config{
-		Rest:   cfg,
-		Scheme: scheme,
-	})
+	return NewRuntimeWithConfig(Config{Rest: cfg}, scheme)
 }
 
 func NewRuntimeForNamespace(cfg *rest.Config, namespace string, scheme *runtime.Scheme) (*Runtime, error) {
-	return NewRuntimeWithConfigs(Config{Rest: cfg, Scheme: scheme, Namespace: namespace}, nil)
+	return NewRuntimeWithConfigs(Config{Rest: cfg, Namespace: namespace}, nil, scheme)
 }
 
-func NewRuntimeWithConfig(cfg Config) (*Runtime, error) {
-	return NewRuntimeWithConfigs(cfg, nil)
+func NewRuntimeWithConfig(cfg Config, scheme *runtime.Scheme) (*Runtime, error) {
+	return NewRuntimeWithConfigs(cfg, nil, scheme)
 }
 
-func NewRuntimeWithConfigs(defaultConfig Config, cfgs map[string]Config) (*Runtime, error) {
-	clients := make(map[string]client.Client, len(cfgs))
-	cachedClients := make(map[string]client.Client, len(cfgs))
-	caches := make(map[string]cache.Cache, len(cfgs))
-	schemes := make(map[string]*runtime.Scheme, len(cfgs))
+func NewRuntimeWithConfigs(defaultConfig Config, apiGroupConfigs map[string]Config, scheme *runtime.Scheme) (*Runtime, error) {
+	clients := make(map[string]client.Client, len(apiGroupConfigs))
+	cachedClients := make(map[string]client.Client, len(apiGroupConfigs))
+	caches := make(map[string]cache.Cache, len(apiGroupConfigs))
 
-	for key, cfg := range cfgs {
-		uncachedClient, cachedClient, theCache, err := getClients(cfg)
+	for key, cfg := range apiGroupConfigs {
+		uncachedClient, cachedClient, theCache, err := getClients(cfg, scheme)
 		if err != nil {
 			return nil, err
 		}
 
 		clients[key] = uncachedClient
 		caches[key] = theCache
-		schemes[key] = cfg.Scheme
 		cachedClients[key] = cachedClient
 	}
 
-	uncachedClient, cachedClient, theCache, err := getClients(defaultConfig)
+	uncachedClient, cachedClient, theCache, err := getClients(defaultConfig, scheme)
 	if err != nil {
 		return nil, err
 	}
 
 	aggUncachedClient := multi.NewClient(uncachedClient, clients)
 	aggCachedClient := multi.NewClient(cachedClient, cachedClients)
-	aggCache := multi.NewCache(theCache, defaultConfig.Scheme, caches, schemes)
+	aggCache := multi.NewCache(scheme, theCache, caches)
 
 	factory := NewSharedControllerFactory(aggUncachedClient, aggCache, &SharedControllerFactoryOptions{
 		// In baaah this is only invoked when a key fails to process
@@ -76,9 +70,9 @@ func NewRuntimeWithConfigs(defaultConfig Config, cfgs map[string]Config) (*Runti
 	}, nil
 }
 
-func getClients(cfg Config) (uncachedClient client.WithWatch, cachedClient client.Client, theCache cache.Cache, err error) {
+func getClients(cfg Config, scheme *runtime.Scheme) (uncachedClient client.WithWatch, cachedClient client.Client, theCache cache.Cache, err error) {
 	uncachedClient, err = client.NewWithWatch(cfg.Rest, client.Options{
-		Scheme: cfg.Scheme,
+		Scheme: scheme,
 	})
 	if err != nil {
 		return nil, nil, nil, err
@@ -90,7 +84,7 @@ func getClients(cfg Config) (uncachedClient client.WithWatch, cachedClient clien
 	}
 
 	theCache, err = cache.New(cfg.Rest, cache.Options{
-		Scheme:     cfg.Scheme,
+		Scheme:     scheme,
 		Namespaces: namespaces,
 	})
 	if err != nil {
@@ -98,7 +92,7 @@ func getClients(cfg Config) (uncachedClient client.WithWatch, cachedClient clien
 	}
 
 	cachedClient, err = client.New(cfg.Rest, client.Options{
-		Scheme: cfg.Scheme,
+		Scheme: scheme,
 		Cache: &client.CacheOptions{
 			Reader: theCache,
 		},
