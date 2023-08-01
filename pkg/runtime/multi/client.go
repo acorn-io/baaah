@@ -3,7 +3,6 @@ package multi
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,7 +27,6 @@ func (c *ClientNotFoundError) Error() string {
 type multiClient struct {
 	defaultClient kclient.WithWatch
 	clients       map[string]kclient.WithWatch
-	scheme        *runtime.Scheme
 }
 
 type clientWithFakeWatch struct {
@@ -42,6 +40,7 @@ func (c *clientWithFakeWatch) Watch(context.Context, kclient.ObjectList, ...kcli
 // NewClient returns a client that will use the client for the API groups it knows about.
 // The default client is used for any unspecified API groups. If a client cannot be found, and a default doesn't exist,
 // then every method will return a ClientNotFound error.
+// Note that defaultClient's scheme should be valid for all clients.
 func NewClient(defaultClient kclient.Client, clients map[string]kclient.Client) kclient.Client {
 	fakeWatchClients := make(map[string]kclient.WithWatch, len(clients))
 
@@ -54,35 +53,11 @@ func NewClient(defaultClient kclient.Client, clients map[string]kclient.Client) 
 // NewWithWatch returns a client WithWatch that will use the client for the API groups it knows about.
 // The default client is used for any unspecified API groups. If a client cannot be found, and a default doesn't exist,
 // then every method will return a ClientNotFound error.
+// Note that defaultClient's scheme should be valid for all clients.
 func NewWithWatch(defaultClient kclient.WithWatch, clients map[string]kclient.WithWatch) kclient.WithWatch {
-	newScheme := runtime.NewScheme()
-	gvksSeen := make(map[schema.GroupVersionKind]struct{})
-	groups := make(map[string]struct{})
-	for group := range clients {
-		groups[group] = struct{}{}
-	}
-
-	for group, c := range clients {
-		_, inGroups := groups[group]
-		for key, val := range c.Scheme().AllKnownTypes() {
-			if _, ok := gvksSeen[key]; !ok && inGroups && key.Group == group {
-				newScheme.AddKnownTypeWithName(key, reflect.New(val).Interface().(runtime.Object))
-				gvksSeen[key] = struct{}{}
-			}
-		}
-	}
-
-	for key, val := range defaultClient.Scheme().AllKnownTypes() {
-		if _, ok := gvksSeen[key]; !ok {
-			newScheme.AddKnownTypeWithName(key, reflect.New(val).Interface().(runtime.Object))
-			gvksSeen[key] = struct{}{}
-		}
-	}
-
 	return &multiClient{
 		defaultClient: defaultClient,
 		clients:       clients,
-		scheme:        newScheme,
 	}
 }
 
@@ -151,7 +126,7 @@ func (m multiClient) SubResource(subResource string) kclient.SubResourceClient {
 }
 
 func (m multiClient) Scheme() *runtime.Scheme {
-	return m.scheme
+	return m.defaultClient.Scheme()
 }
 
 func (m multiClient) RESTMapper() meta.RESTMapper {
@@ -159,7 +134,7 @@ func (m multiClient) RESTMapper() meta.RESTMapper {
 }
 
 func (m multiClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
-	return apiutil.GVKForObject(obj, m.scheme)
+	return apiutil.GVKForObject(obj, m.defaultClient.Scheme())
 }
 
 func (m multiClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
@@ -179,7 +154,7 @@ func (m multiClient) Watch(ctx context.Context, obj kclient.ObjectList, opts ...
 }
 
 func (m multiClient) getClient(obj runtime.Object) (kclient.WithWatch, error) {
-	gvk, err := apiutil.GVKForObject(obj, m.scheme)
+	gvk, err := m.GroupVersionKindFor(obj)
 	if err != nil {
 		return nil, err
 	}

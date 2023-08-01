@@ -3,7 +3,6 @@ package multi
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,35 +23,11 @@ func (c *CacheNotFoundError) Error() string {
 	return fmt.Sprintf("cache for group %s not found", c.group)
 }
 
-func NewCache(defaultCache cache.Cache, defaultScheme *runtime.Scheme, caches map[string]cache.Cache, schemes map[string]*runtime.Scheme) cache.Cache {
-	newScheme := runtime.NewScheme()
-	gvksSeen := make(map[schema.GroupVersionKind]struct{})
-	groups := make(map[string]struct{})
-	for group := range schemes {
-		groups[group] = struct{}{}
-	}
-
-	for group, scheme := range schemes {
-		_, inGroups := groups[group]
-		for key, val := range scheme.AllKnownTypes() {
-			if _, ok := gvksSeen[key]; !ok && inGroups && key.Group == group {
-				newScheme.AddKnownTypeWithName(key, reflect.New(val).Interface().(runtime.Object))
-				gvksSeen[key] = struct{}{}
-			}
-		}
-	}
-
-	for key, val := range defaultScheme.AllKnownTypes() {
-		if _, ok := gvksSeen[key]; !ok {
-			newScheme.AddKnownTypeWithName(key, reflect.New(val).Interface().(runtime.Object))
-			gvksSeen[key] = struct{}{}
-		}
-	}
-
+func NewCache(scheme *runtime.Scheme, defaultCache cache.Cache, caches map[string]cache.Cache) cache.Cache {
 	return multiCache{
 		defaultCache: defaultCache,
 		caches:       caches,
-		scheme:       newScheme,
+		scheme:       scheme,
 	}
 }
 

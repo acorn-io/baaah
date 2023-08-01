@@ -13,13 +13,17 @@ import (
 const defaultHealthzPort = 8888
 
 type Options struct {
-	Backend           backend.Backend
+	// If the backend is nil, then DefaultRESTConfig, DefaultNamespace, and Scheme are used to create a backend.
+	Backend backend.Backend
+	// If a Backend is provided, then this is ignored. If not provided and needed, then a default is created with Scheme.
 	DefaultRESTConfig *rest.Config
-	DefaultScheme     *runtime.Scheme
-	DefaultNamespace  string
-	// SpecialConfigs are keyed by an API group. This indicates to the router that all actions on this group should use the
+	// If a Backend is provided, then this is ignored.
+	DefaultNamespace string
+	// If a Backend is provided, then this is ignored.
+	Scheme *runtime.Scheme
+	// APIGroupConfigs are keyed by an API group. This indicates to the router that all actions on this group should use the
 	// given Config. This is useful for routers that watch different objects on different API servers.
-	SpecialConfigs map[string]bruntime.Config
+	APIGroupConfigs map[string]bruntime.Config
 	// ElectionConfig being nil represents no leader election for the router.
 	ElectionConfig *leader.ElectionConfig
 	// Defaults to 8888
@@ -42,14 +46,14 @@ func (o *Options) complete() (*Options, error) {
 
 	if result.DefaultRESTConfig == nil {
 		var err error
-		result.DefaultRESTConfig, err = restconfig.New(result.DefaultScheme)
+		result.DefaultRESTConfig, err = restconfig.New(result.Scheme)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	defaultConfig := bruntime.Config{Rest: result.DefaultRESTConfig, Scheme: result.DefaultScheme, Namespace: result.DefaultNamespace}
-	backend, err := bruntime.NewRuntimeWithConfigs(defaultConfig, result.SpecialConfigs)
+	defaultConfig := bruntime.Config{Rest: result.DefaultRESTConfig, Namespace: result.DefaultNamespace}
+	backend, err := bruntime.NewRuntimeWithConfigs(defaultConfig, result.APIGroupConfigs, result.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +77,7 @@ func DefaultOptions(routerName string, scheme *runtime.Scheme) (*Options, error)
 	return &Options{
 		Backend:           rt.Backend,
 		DefaultRESTConfig: cfg,
-		DefaultScheme:     scheme,
+		Scheme:            scheme,
 		ElectionConfig:    leader.NewDefaultElectionConfig("", routerName, cfg),
 		HealthzPort:       defaultHealthzPort,
 	}, nil

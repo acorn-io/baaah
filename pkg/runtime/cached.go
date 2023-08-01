@@ -149,6 +149,9 @@ func (c *cacheClient) List(ctx context.Context, list kclient.ObjectList, opts ..
 }
 
 func (c *cacheClient) Create(ctx context.Context, obj kclient.Object, opts ...kclient.CreateOption) error {
+	if u, ok := obj.(*uncached.Holder); ok {
+		return c.uncached.Create(ctx, u.Object, opts...)
+	}
 	err := c.cached.Create(ctx, obj, opts...)
 	if err != nil {
 		return err
@@ -158,6 +161,9 @@ func (c *cacheClient) Create(ctx context.Context, obj kclient.Object, opts ...kc
 }
 
 func (c *cacheClient) Delete(ctx context.Context, obj kclient.Object, opts ...kclient.DeleteOption) error {
+	if u, ok := obj.(*uncached.Holder); ok {
+		return c.uncached.Delete(ctx, u.Object, opts...)
+	}
 	err := c.cached.Delete(ctx, obj, opts...)
 	if err != nil {
 		return err
@@ -167,6 +173,9 @@ func (c *cacheClient) Delete(ctx context.Context, obj kclient.Object, opts ...kc
 }
 
 func (c *cacheClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.UpdateOption) error {
+	if u, ok := obj.(*uncached.Holder); ok {
+		return c.uncached.Update(ctx, u.Object, opts...)
+	}
 	err := c.cached.Update(ctx, obj, opts...)
 	if err != nil {
 		return err
@@ -176,6 +185,9 @@ func (c *cacheClient) Update(ctx context.Context, obj kclient.Object, opts ...kc
 }
 
 func (c *cacheClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.PatchOption) error {
+	if u, ok := obj.(*uncached.Holder); ok {
+		return c.uncached.Patch(ctx, u.Object, patch, opts...)
+	}
 	err := c.cached.Patch(ctx, obj, patch, opts...)
 	if err != nil {
 		return err
