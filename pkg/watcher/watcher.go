@@ -55,9 +55,17 @@ func doWatch[T client.Object](ctx context.Context, revision string, watchFunc wa
 			case watch.Deleted:
 				o := event.Object.DeepCopyObject()
 				mo := o.(client.Object)
+				changed := false
 				if mo.GetDeletionTimestamp().IsZero() {
 					now := metav1.Now()
 					mo.SetDeletionTimestamp(&now)
+					changed = true
+				}
+				if len(mo.GetFinalizers()) > 0 {
+					mo.SetFinalizers(nil)
+					changed = true
+				}
+				if changed {
 					event.Object = mo
 				}
 				fallthrough
