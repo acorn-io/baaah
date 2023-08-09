@@ -29,7 +29,12 @@ type watchFunc func(revision string) (watch.Interface, error)
 func doWatch[T client.Object](ctx context.Context, revision string, watchFunc watchFunc, cb func(obj T) (bool, error)) (cont bool, lastRevision string, nonTerminal error, terminal error) {
 	lastRevision = revision
 	result, err := watchFunc(revision)
-	if err != nil {
+	if apierrors.IsGone(err) {
+		// The server has told us the revision is not accessible anymore. There's no way to recover that
+		// wouldn't give the caller an inconsistent view of the data (some changes could have been missed)
+		// so we treat this as terminal
+		return false, lastRevision, nil, err
+	} else if err != nil {
 		return false, lastRevision, err, nil
 	}
 	defer func() {
@@ -103,11 +108,11 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		done, lastRevision, err, terminalErr := doWatch(ctx, revision, watchFunc, newCB)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "context canceled") {
-				log.Errorf("error while watching type %T, %T: %v", o, cb, err)
+				log.Errorf("error while watching type %T: %v", o, err)
 			}
 		} else if terminalErr != nil {
 			if !errors.Is(terminalErr, context.DeadlineExceeded) && !errors.Is(terminalErr, context.Canceled) && !strings.Contains(terminalErr.Error(), "context canceled") {
-				log.Errorf("terminal error while watching type %T cb[%T]: %v", o, cb, terminalErr)
+				log.Errorf("terminal error while watching type %T: %v", o, terminalErr)
 			}
 			return last, terminalErr
 		} else if done {
@@ -116,7 +121,7 @@ func retryWatch[T client.Object](ctx context.Context, revision string, watchFunc
 		if lastRevision != "" {
 			revision = lastRevision
 		}
-		log.Debugf("no error, going to restart watch %T, %T from revision %s", o, cb, revision)
+		log.Debugf("no error, going to restart watch %T from revision %s", o, revision)
 		select {
 		case <-ctx.Done():
 			return last, ctx.Err()
