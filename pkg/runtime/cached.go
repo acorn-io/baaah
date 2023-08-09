@@ -231,15 +231,15 @@ type subResourceClient struct {
 }
 
 func (s *subResourceClient) Get(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceGetOption) error {
-	return s.reader.Get(ctx, obj, subResource, opts...)
+	return s.reader.Get(ctx, uncached.Unwrap(obj).(kclient.Object), subResource, opts...)
 }
 
 func (s *subResourceClient) Create(ctx context.Context, obj kclient.Object, subResource kclient.Object, opts ...kclient.SubResourceCreateOption) error {
-	return s.writer.Create(ctx, obj, subResource, opts...)
+	return s.writer.Create(ctx, uncached.Unwrap(obj).(kclient.Object), subResource, opts...)
 }
 
 func (s *subResourceClient) Update(ctx context.Context, obj kclient.Object, opts ...kclient.SubResourceUpdateOption) error {
-	err := s.writer.Update(ctx, obj, opts...)
+	err := s.writer.Update(ctx, uncached.Unwrap(obj).(kclient.Object), opts...)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (s *subResourceClient) Update(ctx context.Context, obj kclient.Object, opts
 }
 
 func (s *subResourceClient) Patch(ctx context.Context, obj kclient.Object, patch kclient.Patch, opts ...kclient.SubResourcePatchOption) error {
-	err := s.writer.Patch(ctx, obj, patch, opts...)
+	err := s.writer.Patch(ctx, uncached.Unwrap(obj).(kclient.Object), patch, opts...)
 	if err != nil {
 		return err
 	}
