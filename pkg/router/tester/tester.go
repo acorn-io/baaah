@@ -16,6 +16,7 @@ import (
 	"github.com/acorn-io/baaah/pkg/yaml"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -199,19 +200,8 @@ func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Hand
 	assert.Equal(t, b.ExpectedDelay, resp.Delay)
 
 	if b.ExpectedGoldenPath != "" {
-		var yamls []string
-		for _, o := range resp.Collected {
-			gvk, err := apiutil.GVKForObject(o, b.Scheme)
-			if err != nil {
-				return nil, err
-			}
-			o.GetObjectKind().SetGroupVersionKind(gvk)
-			left, _ := yaml2.Marshal(o)
-
-			left = stripLastTransition(left)
-			yamls = append(yamls, string(left))
-		}
-		autogold.ExpectFile(t, strings.Join(yamls, "\n---\n"), autogold.Dir(b.ExpectedGoldenPath), autogold.Name("expected"))
+		yamls := b.SanitizedYAML(t, resp.Collected)
+		autogold.ExpectFile(t, yamls, autogold.Dir(b.ExpectedGoldenPath), autogold.Name("expected"))
 	}
 
 	if len(b.ExpectedOutput) == 0 {
@@ -244,6 +234,20 @@ func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Hand
 	}
 
 	return &resp, nil
+}
+
+func (b *Harness) SanitizedYAML(t *testing.T, objs []kclient.Object) string {
+	var yamls []string
+	for _, o := range objs {
+		gvk, err := apiutil.GVKForObject(o, b.Scheme)
+		require.NoError(t, err)
+		o.GetObjectKind().SetGroupVersionKind(gvk)
+		left, _ := yaml2.Marshal(o)
+
+		left = stripLastTransition(left)
+		yamls = append(yamls, string(left))
+	}
+	return strings.Join(yamls, "\n---\n")
 }
 
 func stripLastTransition(buf []byte) []byte {
