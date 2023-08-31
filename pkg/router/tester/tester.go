@@ -237,6 +237,7 @@ func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Hand
 }
 
 func (b *Harness) SanitizedYAML(t *testing.T, objs []kclient.Object) string {
+	t.Helper()
 	var yamls []string
 	for _, o := range objs {
 		gvk, err := apiutil.GVKForObject(o, b.Scheme)
