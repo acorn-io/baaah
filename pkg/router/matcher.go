@@ -69,5 +69,5 @@ func (o *objectMatcher) Match(ns, name string, obj kclient.Object) bool {
 			return o.Fields.Matches(i)
 		}
 	}
-	return o.Namespace == ns
+	return o.Namespace == "" || o.Namespace == ns
 }
