@@ -3,6 +3,7 @@ package runtime
 import (
 	"time"
 
+	"github.com/acorn-io/baaah/pkg/mapper"
 	"github.com/acorn-io/baaah/pkg/runtime/multi"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -71,8 +72,14 @@ func NewRuntimeWithConfigs(defaultConfig Config, apiGroupConfigs map[string]Conf
 }
 
 func getClients(cfg Config, scheme *runtime.Scheme) (uncachedClient client.WithWatch, cachedClient client.Client, theCache cache.Cache, err error) {
+	mapper, err := mapper.New(cfg.Rest)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	uncachedClient, err = client.NewWithWatch(cfg.Rest, client.Options{
 		Scheme: scheme,
+		Mapper: mapper,
 	})
 	if err != nil {
 		return nil, nil, nil, err
@@ -84,6 +91,7 @@ func getClients(cfg Config, scheme *runtime.Scheme) (uncachedClient client.WithW
 	}
 
 	theCache, err = cache.New(cfg.Rest, cache.Options{
+		Mapper:     mapper,
 		Scheme:     scheme,
 		Namespaces: namespaces,
 	})
@@ -93,6 +101,7 @@ func getClients(cfg Config, scheme *runtime.Scheme) (uncachedClient client.WithW
 
 	cachedClient, err = client.New(cfg.Rest, client.Options{
 		Scheme: scheme,
+		Mapper: mapper,
 		Cache: &client.CacheOptions{
 			Reader: theCache,
 		},
