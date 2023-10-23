@@ -151,7 +151,17 @@ func (b *Harness) InvokeFunc(t *testing.T, input kclient.Object, handler router.
 	return b.Invoke(t, input, handler)
 }
 
+func (b *Harness) InvokeFuncWithContext(t *testing.T, ctx context.Context, input kclient.Object, handler router.HandlerFunc) (*Response, error) {
+	t.Helper()
+	return b.InvokeWithContext(t, ctx, input, handler)
+}
+
 func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, existing ...kclient.Object) router.Request {
+	t.Helper()
+	return NewRequestWithContext(t, context.TODO(), scheme, input, existing...)
+}
+
+func NewRequestWithContext(t *testing.T, ctx context.Context, scheme *runtime.Scheme, input kclient.Object, existing ...kclient.Object) router.Request {
 	t.Helper()
 	gvk, err := apiutil.GVKForObject(input, scheme)
 	if err != nil {
@@ -164,7 +174,7 @@ func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, exis
 			SchemeObj: scheme,
 		},
 		Object:      input,
-		Ctx:         context.TODO(),
+		Ctx:         ctx,
 		GVK:         gvk,
 		Namespace:   input.GetNamespace(),
 		Name:        input.GetName(),
@@ -175,8 +185,13 @@ func NewRequest(t *testing.T, scheme *runtime.Scheme, input kclient.Object, exis
 
 func (b *Harness) Invoke(t *testing.T, input kclient.Object, handler router.Handler) (*Response, error) {
 	t.Helper()
+	return b.InvokeWithContext(t, context.TODO(), input, handler)
+}
+
+func (b *Harness) InvokeWithContext(t *testing.T, ctx context.Context, input kclient.Object, handler router.Handler) (*Response, error) {
+	t.Helper()
 	var (
-		req  = NewRequest(t, b.Scheme, input, b.Existing...)
+		req  = NewRequestWithContext(t, ctx, b.Scheme, input, b.Existing...)
 		resp = Response{
 			Client: req.Client.(*Client),
 		}
