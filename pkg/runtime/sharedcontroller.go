@@ -5,8 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	clientgocache "k8s.io/client-go/tools/cache"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,7 +19,7 @@ type SharedControllerHandler interface {
 type SharedController interface {
 	Controller
 
-	RegisterHandler(ctx context.Context, name string, handler SharedControllerHandler)
+	RegisterHandler(ctx context.Context, name string, handler SharedControllerHandler) error
 }
 
 type SharedControllerHandlerFunc func(key string, obj runtime.Object) (runtime.Object, error)
@@ -36,10 +38,11 @@ type sharedController struct {
 	started            bool
 	startError         error
 	client             kclient.Client
+	gvk                schema.GroupVersionKind
 }
 
-func (s *sharedController) Informer() clientgocache.SharedIndexInformer {
-	return s.initController().Informer()
+func (s *sharedController) Cache() (cache.Cache, error) {
+	return s.initController().Cache()
 }
 
 func (s *sharedController) Enqueue(namespace, name string) {
@@ -64,7 +67,7 @@ func (s *sharedController) initController() Controller {
 
 	controller, err := s.deferredController()
 	if err != nil {
-		controller = newErrorController()
+		controller = newErrorController(err)
 	}
 
 	s.startError = err
@@ -89,29 +92,58 @@ func (s *sharedController) Start(ctx context.Context, workers int) error {
 	}
 	s.started = true
 
-	go func() {
-		<-ctx.Done()
+	context.AfterFunc(ctx, func() {
 		s.startLock.Lock()
 		defer s.startLock.Unlock()
 		s.started = false
-	}()
+	})
 
 	return nil
 }
 
-func (s *sharedController) RegisterHandler(ctx context.Context, name string, handler SharedControllerHandler) {
+func (s *sharedController) RegisterHandler(ctx context.Context, name string, handler SharedControllerHandler) (returnErr error) {
 	// Ensure that controller is initialized
 	c := s.initController()
 
 	getHandlerTransaction(ctx).do(func() {
+		ctx, cancel := context.WithCancel(ctx)
 		s.handler.Register(ctx, name, handler)
+
+		defer func() {
+			if returnErr == nil {
+				context.AfterFunc(ctx, cancel)
+			} else {
+				cancel()
+			}
+		}()
 
 		s.startLock.Lock()
 		defer s.startLock.Unlock()
 		if s.started {
-			for _, key := range c.Informer().GetStore().ListKeys() {
-				c.EnqueueKey(key)
+			var (
+				objList runtime.Object
+				cache   cache.Cache
+			)
+
+			objList, returnErr = s.client.Scheme().New(schema.GroupVersionKind{
+				Group:   s.gvk.Group,
+				Version: s.gvk.Version,
+				Kind:    s.gvk.Kind + "List",
+			})
+			cache, returnErr = s.controller.Cache()
+			if returnErr != nil {
+				return
 			}
+			if returnErr = cache.List(context.TODO(), objList.(kclient.ObjectList)); returnErr != nil {
+				return
+			}
+			returnErr = meta.EachListItem(objList, func(obj runtime.Object) error {
+				mObj := obj.(kclient.Object)
+				c.EnqueueKey(keyFunc(mObj.GetNamespace(), mObj.GetName()))
+				return nil
+			})
 		}
 	})
+
+	return nil
 }

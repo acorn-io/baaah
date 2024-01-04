@@ -124,7 +124,9 @@ func (b *Backend) Watch(ctx context.Context, gvk schema.GroupVersionKind, name s
 	handler := SharedControllerHandlerFunc(func(key string, obj runtime.Object) (runtime.Object, error) {
 		return cb(gvk, key, obj)
 	})
-	c.RegisterHandler(ctx, fmt.Sprintf("%s %v", name, gvk), handler)
+	if err := c.RegisterHandler(ctx, fmt.Sprintf("%s %v", name, gvk), handler); err != nil {
+		return err
+	}
 
 	if b.hasStarted() {
 		return c.Start(ctx, 5)
@@ -142,6 +144,10 @@ func (b *Backend) IsObjectNamespaced(obj runtime.Object) (bool, error) {
 
 func (b *Backend) GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error) {
 	return apiutil.GVKForObject(uncached.Unwrap(obj), scheme)
+}
+
+func (b *Backend) IndexField(ctx context.Context, obj kclient.Object, field string, extractValue kclient.IndexerFunc) error {
+	return b.cache.IndexField(ctx, obj, field, extractValue)
 }
 
 func (b *Backend) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (kcache.SharedIndexInformer, error) {

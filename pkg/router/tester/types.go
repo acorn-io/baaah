@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/acorn-io/baaah/pkg/router"
 	"github.com/acorn-io/baaah/pkg/uncached"
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
@@ -152,6 +153,8 @@ func (c *Client) Update(ctx context.Context, o kclient.Object, opts ...kclient.U
 }
 
 type Response struct {
+	router.ResponseAttributes
+
 	Delay     time.Duration
 	Collected []kclient.Object
 	Client    *Client

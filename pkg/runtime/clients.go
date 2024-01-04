@@ -85,15 +85,16 @@ func getClients(cfg Config, scheme *runtime.Scheme) (uncachedClient client.WithW
 		return nil, nil, nil, err
 	}
 
-	var namespaces []string
+	var namespaces map[string]cache.Config
 	if cfg.Namespace != "" {
-		namespaces = append(namespaces, cfg.Namespace)
+		namespaces = map[string]cache.Config{}
+		namespaces[cfg.Namespace] = cache.Config{}
 	}
 
 	theCache, err = cache.New(cfg.Rest, cache.Options{
-		Mapper:     mapper,
-		Scheme:     scheme,
-		Namespaces: namespaces,
+		Mapper:            mapper,
+		Scheme:            scheme,
+		DefaultNamespaces: namespaces,
 	})
 	if err != nil {
 		return nil, nil, nil, err

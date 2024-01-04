@@ -86,10 +86,8 @@ func (a *apply) debugID() string {
 		return a.ownerSubContext
 	}
 
-	return fmt.Sprintf("%s %s", a.ownerSubContext, objectset.ObjectKey{
-		Namespace: metadata.GetNamespace(),
-		Name:      metadata.GetName(),
-	})
+	return fmt.Sprintf("subcontext [%s] namespace [%s] name [%s]", a.ownerSubContext, metadata.GetNamespace(),
+		metadata.GetName())
 }
 
 func GetSelector(labelSet map[string]string) (labels.Selector, error) {

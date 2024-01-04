@@ -42,9 +42,7 @@ func (h *SharedHandler) Register(ctx context.Context, name string, handler Share
 		handler: handler,
 	})
 
-	go func() {
-		<-ctx.Done()
-
+	context.AfterFunc(ctx, func() {
 		h.lock.Lock()
 		defer h.lock.Unlock()
 
@@ -54,7 +52,7 @@ func (h *SharedHandler) Register(ctx context.Context, name string, handler Share
 				break
 			}
 		}
-	}()
+	})
 }
 
 func (h *SharedHandler) OnChange(key string, obj runtime.Object) error {

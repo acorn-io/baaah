@@ -342,7 +342,20 @@ func (m *HandlerSet) handle(gvk schema.GroupVersionKind, key string, unmodifiedO
 	return req.Object, m.handleError(req, resp, err)
 }
 
+type ResponseAttributes struct {
+	attr map[string]any
+}
+
+func (r *ResponseAttributes) Attributes() map[string]any {
+	if r.attr == nil {
+		r.attr = map[string]any{}
+	}
+	return r.attr
+}
+
 type response struct {
+	ResponseAttributes
+
 	delay    time.Duration
 	objects  []kclient.Object
 	registry TriggerRegistry

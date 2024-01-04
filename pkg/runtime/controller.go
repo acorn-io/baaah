@@ -41,7 +41,7 @@ type Controller interface {
 	Enqueue(namespace, name string)
 	EnqueueAfter(namespace, name string, delay time.Duration)
 	EnqueueKey(key string)
-	Informer() clientgocache.SharedIndexInformer
+	Cache() (cache.Cache, error)
 	Start(ctx context.Context, workers int) error
 }
 
@@ -51,7 +51,7 @@ type controller struct {
 	name         string
 	workqueue    workqueue.RateLimitingInterface
 	rateLimiter  workqueue.RateLimiter
-	informer     clientgocache.SharedIndexInformer
+	informer     cache.Informer
 	handler      Handler
 	gvk          schema.GroupVersionKind
 	startKeys    []startKey
@@ -78,6 +78,11 @@ func New(gvk schema.GroupVersionKind, scheme *runtime.Scheme, cache cache.Cache,
 		return nil, err
 	}
 
+	informer, err := cache.GetInformerForKind(context.TODO(), gvk)
+	if err != nil {
+		return nil, err
+	}
+
 	controller := &controller{
 		gvk:         gvk,
 		name:        gvk.String(),
@@ -85,6 +90,7 @@ func New(gvk schema.GroupVersionKind, scheme *runtime.Scheme, cache cache.Cache,
 		cache:       cache,
 		obj:         obj,
 		rateLimiter: opts.RateLimiter,
+		informer:    informer,
 	}
 
 	return controller, nil
@@ -112,8 +118,8 @@ func applyDefaultOptions(opts *Options) *Options {
 	return &newOpts
 }
 
-func (c *controller) Informer() clientgocache.SharedIndexInformer {
-	return c.informer
+func (c *controller) Cache() (cache.Cache, error) {
+	return c.cache, nil
 }
 
 func (c *controller) GroupVersionKind() schema.GroupVersionKind {
@@ -255,7 +261,16 @@ func (c *controller) processSingleItem(ctx context.Context, obj interface{}) err
 	return nil
 }
 
+func isSpecialKey(key string) bool {
+	// This matches "_t " and "_r " prefixes
+	return len(key) > 2 && key[0] == '_' && key[2] == ' '
+}
+
 func (c *controller) syncHandler(ctx context.Context, key string) error {
+	if isSpecialKey(key) {
+		return c.handler.OnChange(key, nil)
+	}
+
 	ns, name := keyParse(key)
 	obj := c.obj.DeepCopyObject().(kclient.Object)
 	err := c.cache.Get(ctx, kclient.ObjectKey{
