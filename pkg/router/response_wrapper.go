@@ -10,6 +10,14 @@ type ResponseWrapper struct {
 	NoPrune bool
 	Delay   time.Duration
 	Objs    []kclient.Object
+	Attr    map[string]any
+}
+
+func (r *ResponseWrapper) Attributes() map[string]any {
+	if r.Attr == nil {
+		r.Attr = map[string]any{}
+	}
+	return r.Attr
 }
 
 func (r *ResponseWrapper) DisablePrune() {

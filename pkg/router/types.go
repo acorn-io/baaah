@@ -56,6 +56,7 @@ func (r *Request) Get(object kclient.Object, namespace, name string) error {
 }
 
 type Response interface {
+	Attributes() map[string]any
 	DisablePrune()
 	RetryAfter(delay time.Duration)
 	Objects(obj ...kclient.Object)

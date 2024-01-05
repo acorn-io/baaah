@@ -25,6 +25,7 @@ type Backend interface {
 	CacheFactory
 	Watcher
 	kclient.Client
+	kclient.FieldIndexer
 
 	Start(ctx context.Context) error
 	GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersionKind, error)

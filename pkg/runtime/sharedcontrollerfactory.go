@@ -133,6 +133,7 @@ func (s *sharedControllerFactory) ForKind(gvk schema.GroupVersionKind) (SharedCo
 		},
 		handler: handler,
 		client:  s.client,
+		gvk:     gvk,
 	}
 
 	s.controllers[gvk] = controllerResult

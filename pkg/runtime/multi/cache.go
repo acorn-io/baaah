@@ -53,20 +53,20 @@ func (m multiCache) List(ctx context.Context, list kclient.ObjectList, opts ...k
 	return c.List(ctx, list, opts...)
 }
 
-func (m multiCache) GetInformer(ctx context.Context, obj kclient.Object) (cache.Informer, error) {
+func (m multiCache) GetInformer(ctx context.Context, obj kclient.Object, opts ...cache.InformerGetOption) (cache.Informer, error) {
 	c, err := m.getCache(obj)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetInformer(ctx, obj)
+	return c.GetInformer(ctx, obj, opts...)
 }
 
-func (m multiCache) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (cache.Informer, error) {
+func (m multiCache) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...cache.InformerGetOption) (cache.Informer, error) {
 	c, err := m.getCacheForGroup(gvk.Group)
 	if err != nil {
 		return nil, err
 	}
-	return c.GetInformerForKind(ctx, gvk)
+	return c.GetInformerForKind(ctx, gvk, opts...)
 }
 
 func (m multiCache) Start(ctx context.Context) error {

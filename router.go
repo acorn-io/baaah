@@ -1,6 +1,8 @@
 package baaah
 
 import (
+	"fmt"
+
 	"github.com/acorn-io/baaah/pkg/backend"
 	"github.com/acorn-io/baaah/pkg/leader"
 	"github.com/acorn-io/baaah/pkg/restconfig"
@@ -34,6 +36,10 @@ func (o *Options) complete() (*Options, error) {
 	var result Options
 	if o != nil {
 		result = *o
+	}
+
+	if result.Scheme == nil {
+		return nil, fmt.Errorf("scheme is required to be set")
 	}
 
 	if result.HealthzPort == 0 {

@@ -51,6 +51,8 @@ func prepareObjectForCreate(gvk schema.GroupVersionKind, obj kclient.Object, clo
 
 	if clone {
 		obj = obj.DeepCopyObject().(kclient.Object)
+		obj.SetUID("")
+		obj.SetCreationTimestamp(v1.Time{})
 	}
 	m, err := meta.Accessor(obj)
 	if err != nil {

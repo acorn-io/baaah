@@ -1,6 +1,7 @@
 package restconfig
 
 import (
+	"net/url"
 	"os"
 
 	"github.com/acorn-io/baaah/pkg/ratelimit"
@@ -43,4 +44,27 @@ func New(scheme *runtime.Scheme) (*rest.Config, error) {
 	}
 	cfg.RateLimiter = ratelimit.None
 	return SetScheme(cfg, scheme), nil
+}
+
+func FromURLTokenAndScheme(serverURL, token string, scheme *runtime.Scheme) (*rest.Config, error) {
+	u, err := url.Parse(serverURL)
+	if err != nil {
+		return nil, err
+	}
+	insecure := false
+	if u.Scheme == "https" && u.Host == "localhost" {
+		insecure = true
+	}
+
+	cfg := &rest.Config{
+		Host: serverURL,
+		TLSClientConfig: rest.TLSClientConfig{
+			Insecure: insecure,
+		},
+		BearerToken: token,
+		RateLimiter: ratelimit.None,
+	}
+
+	SetScheme(cfg, scheme)
+	return cfg, nil
 }
