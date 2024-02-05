@@ -277,12 +277,14 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 func isAllowOwnerTransition(existingObj, newObj kclient.Object) bool {
 	existingAnno := existingObj.GetAnnotations()
 	newAnno := newObj.GetAnnotations()
-	return newAnno[LabelSubContext] != "" &&
-		(existingAnno[LabelGVK] == "" || existingAnno[LabelGVK] == newAnno[LabelGVK]) &&
-		(existingAnno[LabelNamespace] == "" || existingAnno[LabelNamespace] == newAnno[LabelNamespace]) &&
-		(existingAnno[LabelName] == "" || existingAnno[LabelName] == newAnno[LabelName]) &&
-		validOwnerChange[fmt.Sprintf("%s => %s", existingAnno[LabelSubContext], newAnno[LabelSubContext])]
-
+	if newAnno[LabelSubContext] == "" ||
+		(existingAnno[LabelGVK] != "" && existingAnno[LabelGVK] != newAnno[LabelGVK]) ||
+		(existingAnno[LabelNamespace] != "" && existingAnno[LabelNamespace] != newAnno[LabelNamespace]) ||
+		(existingAnno[LabelName] != "" && existingAnno[LabelName] != newAnno[LabelName]) {
+		return false
+	}
+	_, ok := validOwnerChange.Load(fmt.Sprintf("%s => %s", existingAnno[LabelSubContext], newAnno[LabelSubContext]))
+	return ok
 }
 
 // isAssigningSubContext is checking to see if an existing managed object
