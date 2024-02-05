@@ -3,6 +3,7 @@ package apply
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,11 +18,11 @@ var (
 	// values that are allowed to change.  The key is in the format of
 	// "oldValue => newValue"
 	// subcontext and the value is the old subcontext name.
-	validOwnerChange = map[string]bool{}
+	validOwnerChange = sync.Map{}
 )
 
 func AddValidOwnerChange(oldSubcontext, newSubContext string) {
-	validOwnerChange[fmt.Sprintf("%s => %s", oldSubcontext, newSubContext)] = true
+	validOwnerChange.Store(fmt.Sprintf("%s => %s", oldSubcontext, newSubContext), struct{}{})
 }
 
 type Apply interface {
