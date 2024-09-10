@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +54,14 @@ func (r *Request) List(object kclient.ObjectList, opts *kclient.ListOptions) err
 
 func (r *Request) Get(object kclient.Object, namespace, name string) error {
 	return r.Client.Get(r.Ctx, Key(namespace, name), object)
+}
+
+func (r *Request) Delete(object kclient.Object) error {
+	err := r.Client.Delete(r.Ctx, object)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 type Response interface {
