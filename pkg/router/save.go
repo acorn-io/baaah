@@ -40,6 +40,15 @@ func (s *save) save(unmodified runtime.Object, req Request, resp *response, watc
 
 	newObj := req.Object
 	if newObj != nil && StatusChanged(unmodified, newObj) {
+		if unmodObj, ok := unmodified.(kclient.Object); ok && unmodObj.GetGeneration() != newObj.GetGeneration() {
+			if err := req.Get(unmodObj, unmodObj.GetNamespace(), unmodObj.GetName()); err != nil {
+				return nil, err
+			}
+			unmodified = unmodObj
+			if !StatusChanged(unmodified, newObj) {
+				return newObj, nil
+			}
+		}
 		return newObj, s.client.Status().Update(req.Ctx, newObj)
 	}
 
