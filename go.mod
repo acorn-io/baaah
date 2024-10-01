@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.5
 
 require (
-	github.com/bombsimon/logrusr/v4 v4.0.0
+	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/google/uuid v1.3.0
 	github.com/hexops/autogold/v2 v2.1.0
 	github.com/moby/locker v1.0.1
