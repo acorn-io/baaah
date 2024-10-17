@@ -37,6 +37,18 @@ type multiCache struct {
 	scheme       *runtime.Scheme
 }
 
+func (m multiCache) RemoveInformer(ctx context.Context, obj kclient.Object) error {
+	if err := m.defaultCache.RemoveInformer(ctx, obj); err != nil {
+		return err
+	}
+	for _, c := range m.caches {
+		if err := c.RemoveInformer(ctx, obj); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m multiCache) Get(ctx context.Context, key kclient.ObjectKey, obj kclient.Object, opts ...kclient.GetOption) error {
 	c, err := m.getCache(obj)
 	if err != nil {
