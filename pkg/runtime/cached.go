@@ -104,7 +104,7 @@ func (c *cacheClient) store(obj kclient.Object) {
 		namespace: obj.GetNamespace(),
 		name:      obj.GetName(),
 	}] = objectValue{
-		Object:   obj,
+		Object:   obj.DeepCopyObject().(kclient.Object),
 		Inserted: time.Now(),
 	}
 	c.recentLock.Unlock()
