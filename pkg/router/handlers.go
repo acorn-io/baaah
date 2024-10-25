@@ -58,6 +58,8 @@ func (h *handlers) Handle(req Request, resp *response) error {
 		newObjects := make([]kclient.Object, 0, len(resp.objects))
 		for _, obj := range resp.objects {
 			if ok, err := isObjectForRequest(req, obj); err != nil {
+				return err
+			} else if ok {
 				req.Object = obj
 			} else {
 				newObjects = append(newObjects, obj)
