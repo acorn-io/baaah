@@ -8,10 +8,14 @@ import (
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func isObjectForRequest(req Request, obj kclient.Object) bool {
+func isObjectForRequest(req Request, obj kclient.Object) (bool, error) {
+	gvk, err := req.Client.GroupVersionKindFor(obj)
+	if err != nil {
+		return false, err
+	}
 	return obj.GetName() == req.Name &&
 		obj.GetNamespace() == req.Namespace &&
-		obj.GetObjectKind().GroupVersionKind() == req.GVK
+		gvk == req.GVK, nil
 }
 
 type handlers struct {
@@ -53,7 +57,7 @@ func (h *handlers) Handle(req Request, resp *response) error {
 		}
 		newObjects := make([]kclient.Object, 0, len(resp.objects))
 		for _, obj := range resp.objects {
-			if isObjectForRequest(req, obj) {
+			if ok, err := isObjectForRequest(req, obj); err != nil {
 				req.Object = obj
 			} else {
 				newObjects = append(newObjects, obj)

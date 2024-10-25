@@ -274,7 +274,7 @@ func (m *HandlerSet) onChange(gvk schema.GroupVersionKind, key string, runtimeOb
 	err = m.backend.Get(m.ctx, kclient.ObjectKey{Name: name, Namespace: ns}, obj.(kclient.Object))
 	if err == nil {
 		runtimeObject = obj
-	} else if err != nil && !apierror.IsNotFound(err) {
+	} else if !apierror.IsNotFound(err) {
 		return nil, err
 	}
 

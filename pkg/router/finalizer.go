@@ -50,7 +50,9 @@ func (f FinalizerHandler) Handle(req Request, resp Response) error {
 	}
 
 	for _, respObj := range newResp.Objs {
-		if isObjectForRequest(req, respObj) {
+		if ok, err := isObjectForRequest(req, respObj); err != nil {
+			return err
+		} else if ok {
 			newObj = respObj
 		}
 		resp.Objects(respObj)
