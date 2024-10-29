@@ -113,7 +113,7 @@ func (b *Backend) addIndexer(ctx context.Context, gvk schema.GroupVersionKind) e
 	return cache.AddIndexers(indexers)
 }
 
-func (b *Backend) Watch(ctx context.Context, gvk schema.GroupVersionKind, name string, cb backend.Callback) error {
+func (b *Backend) Watcher(ctx context.Context, gvk schema.GroupVersionKind, name string, cb backend.Callback) error {
 	c, err := b.cacheFactory.ForKind(gvk)
 	if err != nil {
 		return err

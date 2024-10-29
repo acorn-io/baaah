@@ -3,11 +3,13 @@ package router
 import (
 	"context"
 
+	"github.com/acorn-io/baaah/pkg/backend"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,9 +19,14 @@ type TriggerRegistry interface {
 }
 
 type client struct {
+	backend backend.Backend
 	reader
 	writer
 	status
+}
+
+func (c *client) Watch(ctx context.Context, list kclient.ObjectList, opts ...kclient.ListOption) (watch.Interface, error) {
+	return c.backend.Watch(ctx, list, opts...)
 }
 
 func (c *client) Scheme() *runtime.Scheme {

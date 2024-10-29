@@ -34,7 +34,7 @@ func NewRuntimeWithConfig(cfg Config, scheme *runtime.Scheme) (*Runtime, error) 
 }
 
 func NewRuntimeWithConfigs(defaultConfig Config, apiGroupConfigs map[string]Config, scheme *runtime.Scheme) (*Runtime, error) {
-	clients := make(map[string]client.Client, len(apiGroupConfigs))
+	clients := make(map[string]client.WithWatch, len(apiGroupConfigs))
 	cachedClients := make(map[string]client.Client, len(apiGroupConfigs))
 	caches := make(map[string]cache.Cache, len(apiGroupConfigs))
 
@@ -54,7 +54,7 @@ func NewRuntimeWithConfigs(defaultConfig Config, apiGroupConfigs map[string]Conf
 		return nil, err
 	}
 
-	aggUncachedClient := multi.NewClient(uncachedClient, clients)
+	aggUncachedClient := multi.NewWithWatch(uncachedClient, clients)
 	aggCachedClient := multi.NewClient(cachedClient, cachedClients)
 	aggCache := multi.NewCache(scheme, theCache, caches)
 

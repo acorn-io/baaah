@@ -139,6 +139,7 @@ func (m *HandlerSet) newRequestResponse(gvk schema.GroupVersionKind, key string,
 	req := Request{
 		FromTrigger: trigger,
 		Client: &client{
+			backend: m.backend,
 			reader: reader{
 				scheme:   m.scheme,
 				client:   m.backend,
@@ -179,7 +180,7 @@ func (m *HandlerSet) WatchGVK(gvks ...schema.GroupVersionKind) error {
 		if m.watching[gvk] {
 			continue
 		}
-		if err := m.backend.Watch(m.ctx, gvk, m.name, m.onChange); err == nil {
+		if err := m.backend.Watcher(m.ctx, gvk, m.name, m.onChange); err == nil {
 			m.watching[gvk] = true
 		} else {
 			watchErrs = append(watchErrs, err)

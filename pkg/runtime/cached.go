@@ -2,14 +2,17 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/acorn-io/baaah/pkg/uncached"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
@@ -29,7 +32,8 @@ type objectValue struct {
 }
 
 type cacheClient struct {
-	uncached, cached kclient.Client
+	uncached kclient.WithWatch
+	cached   kclient.Client
 
 	recent     map[objectKey]objectValue
 	recentLock sync.Mutex
@@ -50,7 +54,7 @@ func newer(oldRV, newRV string) bool {
 	return oldI < newI
 }
 
-func newCacheClient(uncached, cached kclient.Client) *cacheClient {
+func newCacheClient(uncached kclient.WithWatch, cached kclient.Client) *cacheClient {
 	return &cacheClient{
 		uncached: uncached,
 		cached:   cached,
@@ -115,14 +119,14 @@ func (c *cacheClient) Get(ctx context.Context, key kclient.ObjectKey, obj kclien
 		return c.uncached.Get(ctx, key, u.Object, opts...)
 	}
 
-	err := c.cached.Get(ctx, key, obj)
-	if err != nil {
-		return err
+	getErr := c.cached.Get(ctx, key, obj)
+	if getErr != nil && !apierrors.IsNotFound(getErr) {
+		return getErr
 	}
 
 	gvk, err := apiutil.GVKForObject(obj, c.Scheme())
 	if err != nil {
-		return err
+		return errors.Join(getErr, err)
 	}
 
 	cacheKey := objectKey{
@@ -134,6 +138,15 @@ func (c *cacheClient) Get(ctx context.Context, key kclient.ObjectKey, obj kclien
 	c.recentLock.Lock()
 	cachedObj, ok := c.recent[cacheKey]
 	c.recentLock.Unlock()
+
+	if apierrors.IsNotFound(getErr) {
+		if ok {
+			return CopyInto(obj, cachedObj.Object)
+		} else {
+			return getErr
+		}
+	}
+
 	if ok && newer(obj.GetResourceVersion(), cachedObj.Object.GetResourceVersion()) {
 		return CopyInto(obj, cachedObj.Object)
 	}
@@ -207,6 +220,10 @@ func (c *cacheClient) SubResource(subResource string) kclient.SubResourceClient 
 		reader: client,
 		writer: client,
 	}
+}
+
+func (c *cacheClient) Watch(ctx context.Context, obj kclient.ObjectList, opts ...kclient.ListOption) (watch.Interface, error) {
+	return c.uncached.Watch(ctx, obj, opts...)
 }
 
 func (c *cacheClient) Status() kclient.StatusWriter {

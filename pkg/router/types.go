@@ -32,7 +32,7 @@ func (h HandlerFunc) Handle(req Request, resp Response) error {
 }
 
 type Request struct {
-	Client      kclient.Client
+	Client      kclient.WithWatch
 	Object      kclient.Object
 	Ctx         context.Context
 	GVK         schema.GroupVersionKind

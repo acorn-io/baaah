@@ -17,14 +17,14 @@ type Trigger interface {
 }
 
 type Watcher interface {
-	Watch(ctx context.Context, gvk schema.GroupVersionKind, name string, cb Callback) error
+	Watcher(ctx context.Context, gvk schema.GroupVersionKind, name string, cb Callback) error
 }
 
 type Backend interface {
 	Trigger
 	CacheFactory
 	Watcher
-	kclient.Client
+	kclient.WithWatch
 	kclient.FieldIndexer
 
 	Start(ctx context.Context) error
