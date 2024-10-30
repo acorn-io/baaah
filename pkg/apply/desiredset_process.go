@@ -157,6 +157,22 @@ func (a *apply) IsNamespaced(gvk schema.GroupVersionKind) (bool, error) {
 	return mapping.Scope.Name() == meta.RESTScopeNameNamespace, nil
 }
 
+func annotationsMatch(oldObj, newObj kclient.Object) bool {
+	oldAnno := oldObj.GetAnnotations()
+	newAnno := newObj.GetAnnotations()
+	for _, v := range []string{
+		LabelSubContext,
+		LabelGVK,
+		LabelName,
+		LabelNamespace,
+		LabelHash} {
+		if oldAnno[v] != newAnno[v] {
+			return false
+		}
+	}
+	return true
+}
+
 func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVersionKind, allObjs *objectset.ObjectSet) error {
 	objs := allObjs.ObjectsByGVK()[gvk]
 
@@ -203,12 +219,14 @@ func (a *apply) process(debugID string, set labels.Selector, gvk schema.GroupVer
 			// Taking over an object that wasn't previously managed by us
 			existingObj, getErr := a.get(gvk, objs[k], k.Namespace, k.Name)
 			if getErr == nil {
-				if existingObj.GetLabels()[LabelHash] != "" && !isAssigningSubContext(existingObj, obj) && !isAllowOwnerTransition(existingObj, obj) {
-					return fmt.Errorf("failed to update existing owned object %s %s for %s, old subcontext [%s] gvk [%s] namespace [%s] name [%s]: %w", k, gvk, debugID,
-						existingObj.GetAnnotations()[LabelSubContext],
-						existingObj.GetAnnotations()[LabelGVK],
-						existingObj.GetAnnotations()[LabelNamespace],
-						existingObj.GetAnnotations()[LabelName], err)
+				if !annotationsMatch(existingObj, obj) {
+					if existingObj.GetLabels()[LabelHash] != "" && !isAssigningSubContext(existingObj, obj) && !isAllowOwnerTransition(existingObj, obj) {
+						return fmt.Errorf("failed to update existing owned object %s %s for %s, old subcontext [%s] gvk [%s] namespace [%s] name [%s]: %w", k, gvk, debugID,
+							existingObj.GetAnnotations()[LabelSubContext],
+							existingObj.GetAnnotations()[LabelGVK],
+							existingObj.GetAnnotations()[LabelNamespace],
+							existingObj.GetAnnotations()[LabelName], err)
+					}
 				}
 				if should(obj, AnnotationUpdate) {
 					toUpdate = append(toUpdate, k)

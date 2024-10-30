@@ -143,7 +143,7 @@ func (c *cacheClient) Get(ctx context.Context, key kclient.ObjectKey, obj kclien
 		if ok {
 			return CopyInto(obj, cachedObj.Object)
 		} else {
-			return getErr
+			return c.uncached.Get(ctx, key, obj, opts...)
 		}
 	}
 
