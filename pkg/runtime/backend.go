@@ -3,6 +3,8 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +20,15 @@ import (
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
+
+var DefaultThreadiness = 50
+
+func init() {
+	i, _ := strconv.Atoi(os.Getenv("BAAAH_THREADINESS"))
+	if i > 0 {
+		DefaultThreadiness = i
+	}
+}
 
 type Backend struct {
 	*cacheClient
@@ -45,7 +56,7 @@ func (b *Backend) Start(ctx context.Context) (err error) {
 			b.started = true
 		}
 	}()
-	if err := b.cacheFactory.Start(ctx, 5); err != nil {
+	if err := b.cacheFactory.Start(ctx, DefaultThreadiness); err != nil {
 		return err
 	}
 	if !b.cache.WaitForCacheSync(ctx) {
@@ -129,7 +140,7 @@ func (b *Backend) Watcher(ctx context.Context, gvk schema.GroupVersionKind, name
 	}
 
 	if b.hasStarted() {
-		return c.Start(ctx, 5)
+		return c.Start(ctx, DefaultThreadiness)
 	}
 	return nil
 }
