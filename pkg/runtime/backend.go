@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
-var DefaultThreadiness = 50
+var DefaultThreadiness = 5
 
 func init() {
 	i, _ := strconv.Atoi(os.Getenv("BAAAH_THREADINESS"))
